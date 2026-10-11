@@ -1,4 +1,4 @@
-import { debounce, moment, normalizePath, Platform, TFile, TFolder, type App } from "obsidian";
+import { debounce, moment, normalizePath, TFile, TFolder, type App } from "obsidian";
 import { getAllDailyNotes, getDailyNote } from "obsidian-daily-notes-interface";
 import type TGInbox from "../main";
 import { notifyPlugin, spiralPlugin } from "../integrations";
@@ -97,9 +97,9 @@ export class Companion {
         this.saveSoon = debounce(() => void plugin.saveSettings(), 2000, true);
     }
 
-    /** 这台设备上陪不陪聊。 */
+    /** 陪伴开没开（插件只在桌面端运行）。 */
     on(): boolean {
-        return !!this.cfg.enabled && (Platform.isDesktopApp || !!this.cfg.mobile);
+        return !!this.cfg.enabled;
     }
     get m(): string {
         return this.cfg.mascot || "";
@@ -172,14 +172,12 @@ export class Companion {
     personaMessage(): { text: string; markup: InlineKeyboard } {
         const files = this.personaFiles();
         const cur = this.personaFile();
-        const rows: InlineKeyboard["inline_keyboard"] = files
-            .slice(0, 20)
-            .map((f, i) => [
-                {
-                    text: (cur?.path === f.path ? "✅ " : "") + f.basename,
-                    callback_data: `co|persona|${i}`,
-                },
-            ]);
+        const rows: InlineKeyboard["inline_keyboard"] = files.slice(0, 20).map((f, i) => [
+            {
+                text: (cur?.path === f.path ? "✅ " : "") + f.basename,
+                callback_data: `co|persona|${i}`,
+            },
+        ]);
         rows.push([
             {
                 text: (cur ? "" : "✅ ") + "默认（爱你、关心你的那个人）",

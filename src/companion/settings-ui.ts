@@ -84,11 +84,6 @@ export function renderCompanionSettings(
         "关掉以后它只是一个收件箱：发什么记什么，不聊天、不读日记、不调模型",
         "enabled",
     );
-    toggle(
-        "手机端也陪聊",
-        "默认只在桌面端回你，免得两台设备同时开着时抢着回；手机端只能用 API 后端",
-        "mobile",
-    );
     new Setting(containerEl)
         .setName("陪伴档案笔记")
         .setDesc(
@@ -268,7 +263,7 @@ export function renderCompanionSettings(
     if (cc.backend === "cli") {
         text(
             "　claude 命令行路径",
-            "要先装好并登录 Claude Code；用的是命令行自己的登录，不用填 key。只能在桌面端用",
+            "要先装好并登录 Claude Code；用的是命令行自己的登录，不用填 key",
             "cliPath",
             "~/.local/bin/claude",
         );

@@ -128,7 +128,7 @@ async function callHttp(
 
 function callCli(c: CompanionSettings, prompt: string, timeoutSec: number): Promise<string> {
     if (!Platform.isDesktopApp) {
-        return Promise.reject(new Error("命令行后端只能在桌面端用，手机上请换成 API 后端"));
+        return Promise.reject(new Error("命令行后端只能在桌面端用"));
     }
     // Node 模块只在桌面端有，用到时再取。这里必须拿真正的进程环境：
     // 打包进来的 grammy 网页版自带一个 process 替身，里面没有 HOME，命令行就找不到自己的登录。
