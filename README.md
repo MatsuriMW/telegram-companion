@@ -1,38 +1,127 @@
-# Telegram Inbox
+# Telegram Companion
 
-This plugin can receive messages from Telegram bots and add them to Obsidian's daily note.
+> A Telegram bot for your Obsidian vault that does two things: everything you send it lands in today's daily note, and when you want to talk, it answers as a friend who has read your recent notes. It keeps a small profile note about you that grows over time, and you choose which model sits behind it (Claude Code CLI, Anthropic API, or any OpenAI-compatible endpoint). The interface and replies are in Chinese by default; the reply language is a setting.
 
-## Usage
+社区插件 [Telegram Inbox](https://github.com/icealtria/obsidian-telegram-inbox) 的改版。原版做一件事：发给自己的 Telegram 机器人的消息，自动记进 Obsidian 今天的日记。
 
-1. Create a bot using [@BotFather](https://telegram.me/BotFather).
-2. Copy the bot token provided by [@BotFather](https://telegram.me/BotFather).
-3. Paste the token into the `Bot Token` field in the plugin settings.
-4. Add your username or telegram id to `Allowed Users`. You can get your id from [@Get_UIDbot](https://t.me/Get_UIDbot)
-5. Click the `Restart` button.
+这一版给收件箱的另一头加了一个读过你日记的朋友。它看得到你今天在做什么、这一周一直在忙什么、接下来打算做什么，所以你说「好累」，它不会回一句空泛的「加油」；你说「搞定了」，它知道你搞定的是什么。
 
-> When the plugin is not running, messages will be stored on the Telegram server for 24 hours at most. [source](https://core.telegram.org/bots/api#getting-updates)
+推荐度 ★★★：收件箱装上就能用；陪伴的部分再配一个模型后端就能用（三种任选，见「背后的模型」）。第一次用请看 [上手指南](docs/上手指南.md)。
 
-## Manually install the plugin
+## 为什么做
 
-Requires Node.js environment.
+手机上最顺手的输入框是聊天软件。想法、截图、链接、一句情绪，随手发给机器人就进了日记，不用打开 Obsidian。
 
-### Build
+日记记得越多，就越希望对面能回应一下。人在两种时候最想有人接一句：累到不想动的时候，和开心到想跟人分享的时候。这两种时候，打开一个 AI 聊天窗口、从头解释「我最近在忙什么」太累了，而你的日记里早就写着答案。所以让机器人先读日记，再回你。
 
-- Clone this repo. `git clone https://github.com/icealtria/obsidian-telegram-inbox`
-- Run `pnpm i` or another package manager to install dependencies.
-- Run `pnpm build` to build the plugin.
-  
-### Install
+## 两种模式：记录和对话
 
-- Copy over `main.js`, `manifest.json`, `styles.css` to your vault `VaultFolder/.obsidian/plugins/telegram-inbox/`.
+- **记录模式**（默认）：发什么记什么，和原版收件箱一样。
+- **对话模式**：每句话它都会接着前面的话回你。对话内容不进日记：聊天归聊天，日记还是你自己写的那份。
 
-## Bug Reporting
+怎么进、怎么出：
 
-If you encounter any issues:
+- **自己说**：发「对话模式」「陪我聊天」或 `/chat` 进入，一直保持到你说「退出」「记录模式」「不聊了」，或者说「睡了」收工。
+- **自动进入**：发情绪话（好累、好难受、好开心、想某个人……）、你设成「回完进入对话模式」的口癖（默认是你好、在吗这类招呼）、以「聊聊」「陪我」开头，或者回复它的某条消息，都会自动进入。自动进入的，20 分钟没说话就自己回到记录模式，并告诉你一声（时长在设置里改）。
+- **对话里也能记**：`done` / `doing`、图片、带链接的消息照常记；想把某一句记进日记，用「记 」开头。
 
-1. Press `Ctrl + Shift + I` (Windows/Linux) or `Cmd + Option + I` (macOS) to open the developer console
-2. Look for any error messages in the console
-3. When reporting bugs, please include:
-   - Console error messages
-   - Steps to reproduce the issue
-   - Your operating system and Obsidian version
+## 它怎么回你
+
+每次回复之前，它会读这些：
+
+1. **陪伴档案**：你写给它的一页笔记，写着你是谁、累的时候通常因为什么、希望被怎样回应。
+2. **近一周的日记**：今天的最细，越早越粗。它从里面看三件事：你一直在做什么（好几天都出现的）、最近在做什么、接下来打算做什么（待办和你写下的计划）。
+3. **这次对话**，以及**最近一天它自己说过的话**。
+
+第三条是为了不来回说同一件事。提过的事、夸过的点、用过的句式，它不会再说一遍，除非你自己接着聊那件事；今天的日记聊完了，它就往这一周里找没聊过的角度。
+
+几条写死在代码里的原则，不管档案怎么写都会遵守：
+
+- 只回应你自己的事。日记里别人说的话、你摘抄转述的内容，不会被拿来套在你身上，也不会提别人的隐私。
+- 只有你这一次明确说出想伤害自己、不想活，才会认真接住并请你联系身边的人或求助热线；日记里出现过相关的词，不会让它主动提起。
+- 模型连不上时，回一句简短的陪伴话，并告诉你是哪里没连上，不会让你等半天没有回应。
+
+要等的回复（读日记、调模型，大约 8～30 秒）不会让你干等：它马上先回一条「💭 收到，在想……」，每隔几秒换一句进度，写好后这条提示消失，正式回复作为新消息发来。用新消息是为了你切出聊天后手机也会响。
+
+## 你发什么，它做什么
+
+| 你发 | 它做 | 记进日记吗 |
+|---|---|---|
+| 任意文字、图片、链接、语音 | 记进今天的日记，时间按消息**发出**的时刻算，过了日界才算第二天 | 记 |
+| `done 写稿 2h`、`doing 写稿` | 日记里用 Logseq 式任务（`- TODO 写稿`）的话，直接改今天那条任务的状态，并补上时间；没有对应的任务就新记一条 | 改那一行 |
+| 你的口癖（见下面「口癖」一节） | 马上回一句，不等模型 | 不记 |
+| `好累` `好难受` `睡不着` `好想她`…… | 进入对话模式，像朋友发消息那样回 4～8 行：先接住情绪，用日记里的具体事说明它懂你的处境，不说教 | 不记 |
+| `好开心` `搞定了` `哈哈哈` | 进入对话模式，跟你一起高兴，不趁机提醒你还有什么没做 | 不记 |
+| 回复它的某条消息 | 进入对话模式，接着聊 | 不记 |
+| `睡了` `去睡了` `休息了` `晚安` | 收工：退出对话模式，发一条今天的小结：做成了什么、明天先做哪件，再说几句话让你安心去睡 | 记一行时间 |
+| `小结` `/summary` | 只要今天的小结，不收工 | 不记 |
+| `模式` `/mode` | 现在是记录模式还是对话模式 | 不记 |
+| `模型` `/model` | 现在用的是哪个模型，点按钮切换 | 不记 |
+| `你了解我什么` `/me` | 看它现在对你的了解（陪伴档案里的「🔄 近况」），秒回 | 不记 |
+| `更新画像` `/profile` | 现在就重新读一遍这周的记录，更新近况 | 改档案的近况 |
+| `/task 内容` | 记一条待办 | 记 |
+| `帮助` `/help` | 在 Telegram 里回一份指令表 | 不记 |
+
+所有 `/` 指令都注册在 Telegram 的指令菜单里，输入 `/` 就能选。
+
+## 口癖：你自己的说法
+
+每个人打招呼、撒欢的说法不一样。有人说「在吗」，有人说「哈喽」，有人开心了就「呱呱呱」。这些话不值得等模型十几秒，所以在设置的「口癖」一节里自己定：整句话就是某个触发词时，它马上回一句，这句话也不记进日记。
+
+每条口癖有触发词（可以写好几个，逗号隔开）和三种回法：
+
+| 回法 | 它怎么回 | 例子 |
+|---|---|---|
+| 打招呼 | 按时间段问好，带上你正在做的事和今天做完了几件 | 你发「在吗」，它回「晚上好 🌙 / ⭐ 你在做「写稿」/ ✅ 今天已经做完 5 件了」 |
+| 跟着说 | 你说几声，它多说一声 | 你发「呱呱」，它回「呱呱呱！」 |
+| 回我写的话 | 从你写的几句里随机回一句 | 你发「谢谢」，它回「不客气呀 🫶」 |
+
+每条还有两个开关：**回完进入对话模式**（打招呼通常开着，接下来说的话它都会接），和**开心**（表示你说这个词的时候心情好；句子里带着它，比如「呱呱 简历过了」，会自动进入对话模式，它也会跟着你高兴，模型还会学着用同样的词回你）。
+
+默认带两条：招呼（你好、hi、在吗……）和道谢（谢谢、thanks……）。随便改、随便加。
+
+## 陪伴档案：它对你的了解
+
+陪伴档案是库里的一页笔记（路径在设置里填，可以点「新建模板」生成一份）。想改它说话的方式，就改这页，下一条消息就生效。
+
+档案分两部分：上面是你手写的长期画像，末尾是一节自动维护的「🔄 近况」。它有三种更新方式：
+
+- **聊完就整理**：对话结束时（你说退出、超时回到记录模式、或者收工），如果这段对话里你说的话够多（默认累计 150 个字，设置里可改），它会把其中新出现的事实并进「近况」：只改有变化的那几行，然后发一条消息告诉你记了什么。说得少就先攒着，等攒够了一起整理；寒暄和单纯的情绪话不会被记成事实。
+- **每周日重写近况**：读这一周的日记、你指定的额外笔记（比如周报、项目复盘），以及这周在对话模式里你说过的话，整段重写「近况」。
+- **长期画像要你点头才改**：上面两种更新如果发现了稳定的新特点（新的压力模式、喜欢怎样被回应、重要的人或目标），会发到 Telegram 问你，每条带「✅ 记进档案 / ❌ 不要」按钮，点了 ✅ 才写进你手写的那几节。你手写的部分它不会自己改。
+
+对话模式里说的话只存在插件自己的数据文件里，不进日记和笔记，每周更新完就清空。不想让它参考对话，在设置里关掉「参考对话模式里你说过的话」。
+
+## 背后的模型
+
+陪聊、小结、更新档案都要调一个大语言模型。在设置的「背后的模型」里选一种后端：
+
+| 后端 | 要准备什么 | 适合谁 |
+|---|---|---|
+| Claude 命令行 | 本机装好并登录 [Claude Code](https://claude.com/claude-code)，不用填 key；可以选 sonnet / opus / haiku 或填完整模型名 | 已经在用 Claude Code 订阅的人；只能在桌面端用 |
+| Anthropic API | 一个 API key 和模型名 | 想按量付费直接用 Claude 的人 |
+| OpenAI 兼容接口 | 接口地址、key、模型名；DeepSeek、OpenAI、OpenRouter、本机的 Ollama 都是这一类 | 想用别家模型，或者想让数据留在本机（Ollama）的人 |
+
+三种后端的参数可以都填好，然后随时切换：在设置里换，或者在 Telegram 里发「模型」，点按钮就切过去。设置里有一个「发一句测试」按钮，填完先点它确认连得上。
+
+**你的数据去哪了**：每次回复，插件会把陪伴档案和近一周日记的摘要（任务行和顶格条目，不含附件）发给你选的那家模型服务，除此之外不发给任何人。API key 存在插件自己的 `data.json` 里；如果你的库会同步到公开的地方，记得把这个文件排除掉。
+
+## 和别的插件配合（可选）
+
+这个插件自己就能用。同一个作者的另外两个插件装着的话，它会多做一些事：
+
+- **螺旋日程（nautilus-spiral）**：`?` 看图文版今日日程；`起了` `睡了` 记作息；`去吃饭了` → `吃完了` 暂停和恢复正在做的事。
+- **任务提醒（nautilus-notify）**：定时把日程、健身早报、拖了好几天的待办（带按钮）、周洞察推到同一个机器人；陪聊时多读到你的作息和训练数据。
+
+## 需要什么
+
+- 一个自己的 Telegram 机器人（找 @BotFather 建，免费）。
+- **日记**：它读的是 Obsidian 的日记。日记放在哪、文件名什么格式，跟着「日记」核心插件（或 Periodic Notes）的设置走，这个插件里不用另外配。任务写成 `- [ ] 事情` 或 Logseq 式的 `- TODO 事情` 都认；它读的是每天日记里顶格的行和任务行，缩进在下面的细节不读。
+- 陪伴功能要一个模型后端（见上）。
+- **Obsidian 要开着**。电脑睡着时机器人回不了，醒来后会补上。陪伴默认只在桌面端开，手机上的 Obsidian 只当收件箱；想让手机端也陪聊，在设置里打开，并换成一个 API 后端。
+
+它不是心理咨询，也替代不了身边的人。它能做的，是在你随手发出一句话的时候，有一个看过你日记的声音接住你。
+
+## 致谢与许可
+
+基于 [icealtria](https://github.com/icealtria) 的社区插件 [Telegram Inbox](https://github.com/icealtria/obsidian-telegram-inbox) 修改，感谢原作者。原版的收件箱、媒体下载、消息模板都保留着，这一版在它上面加了两种模式、陪伴、口癖、陪伴档案和可切换的模型后端，源码改动都在这个仓库的提交记录里。原版以 GPL-3.0 发布，这一版同样以 [GPL-3.0](LICENSE) 发布。

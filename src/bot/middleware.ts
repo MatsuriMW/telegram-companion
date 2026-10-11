@@ -23,6 +23,7 @@ function isAuthorizedUser(
 
 export function createRestrictToAllowedUsersMiddleware(
     settings: TGInboxSettings,
+    onOwnerChat?: () => void,
 ): Composer<Context> {
     return new Composer().use(async (ctx: Context, next) => {
         const chat = ctx.chat;
@@ -37,6 +38,12 @@ export function createRestrictToAllowedUsersMiddleware(
         const username = from?.username ?? chat.username;
 
         if (isAuthorizedUser(settings, userId, username)) {
+            // Remember the owner's private chat so the bot can message them first
+            // (idle notice, weekly profile update, reminders from other plugins).
+            if (chat.type === "private" && settings.owner_chat_id !== chat.id) {
+                settings.owner_chat_id = chat.id;
+                onOwnerChat?.();
+            }
             await next();
         } else {
             console.log(

@@ -3,6 +3,7 @@ import type TGInbox from "./main";
 import * as Mustache from "mustache";
 import { ActionAfterReception } from "./settings/types";
 import { getSyncStatus, hasSyncPlugin } from "./utils/sync";
+import { renderCompanionSettings } from "./companion/settings-ui";
 
 export class TGInboxSettingTab extends PluginSettingTab {
     plugin: TGInbox;
@@ -338,25 +339,22 @@ export class TGInboxSettingTab extends PluginSettingTab {
             syncStatusDiv.createDiv({ text: "Remotely Sync: enabled" });
         }
 
-        const donationDiv = containerEl.createDiv({ cls: "tg-inbox-donation-footer" });
+        new Setting(containerEl)
+            .setName("Save as list items")
+            .setDesc(
+                'Turn every top-level line of a message into a list item ("- "), with a photo nested under its caption. For outliner-style daily notes.',
+            )
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.as_list_items).onChange(async (value) => {
+                    this.plugin.settings.as_list_items = value;
+                    await this.plugin.saveSettings();
+                }),
+            );
 
-        const donationInfo = donationDiv.createDiv({ cls: "donation-info" });
-        donationInfo.createSpan({ text: "❤️", cls: "donation-heart" });
-
-        const donationTextContainer = donationInfo.createDiv({ cls: "donation-text-container" });
-        donationTextContainer.createEl("strong", { text: "Support development" });
-        donationTextContainer.createEl("div", {
-            text: "If you find this plugin helpful, please consider supporting its development to help me keep it alive. Thank you!",
-            cls: "donation-text",
+        renderCompanionSettings(containerEl, this.plugin, () => {
+            window.clearInterval(this.updateId);
+            this.display();
         });
-
-        const buttonContainer = donationDiv.createDiv({ cls: "donation-buttons" });
-
-        const coffeeBtn = buttonContainer.createEl("button", { text: "Ko-fi" });
-        coffeeBtn.onclick = () => window.open("https://ko-fi.com/icealtria");
-
-        const githubBtn = buttonContainer.createEl("button", { text: "GitHub Sponsors" });
-        githubBtn.onclick = () => window.open("https://github.com/sponsors/icealtria");
     }
 
     hide() {
