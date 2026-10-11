@@ -55,6 +55,11 @@ export interface CompanionSettings {
     /** Also answer on mobile (off by default so two devices don't both reply). */
     mobile: boolean;
     profilePath: string;
+    /** 人设：让它扮演一个角色。personaPath 是一篇笔记或一个文件夹（里面每篇是一个角色）。 */
+    personaOn: boolean;
+    personaPath: string;
+    /** 文件夹里现在用的是哪一篇（路径）。 */
+    personaActive: string;
     lang: string;
     mascot: string;
     quipsOn: boolean;
@@ -105,6 +110,9 @@ export const COMPANION_DEFAULTS: CompanionSettings = {
     enabled: true,
     mobile: false,
     profilePath: "陪伴档案.md",
+    personaOn: false,
+    personaPath: "陪伴人设.md",
+    personaActive: "",
     lang: "中文",
     mascot: "✨",
     quipsOn: true,

@@ -111,6 +111,31 @@ export function renderCompanionSettings(
     text("机器人的小表情", "出现在它的一些固定回复里，比如 🐸；可以空着", "mascot");
     num("自动进入的对话，多少分钟没说话回到记录模式", "", "chatIdleMin");
 
+    // ---- 人设
+    new Setting(containerEl).setName("人设").setHeading();
+    toggle(
+        "让它扮演一个角色",
+        "默认它是一个爱你、关心你、带着母亲般温柔的角色。打开以后按下面那篇笔记写的角色回你：角色扮演、语 C、换一种语气都可以，语气、格式、长短全由笔记说了算。不重复说同一件事、不拿日记里别人的话套你、你明确说想伤害自己时放下角色认真回应，这几条不会变",
+        "personaOn",
+    );
+    new Setting(containerEl)
+        .setName("人设笔记")
+        .setDesc("一篇笔记，或者一个文件夹（里面每篇笔记是一个角色，在 Telegram 里发「人设」切换）")
+        .addText((t) =>
+            t.setValue(cc.personaPath).onChange(async (v) => {
+                cc.personaPath = v.trim();
+                await save();
+            }),
+        )
+        .addButton((b) =>
+            b.setButtonText("新建模板").onClick(async () => {
+                const made = await co.createPersona();
+                new Notice(made ? `已新建 ${made}，打开它写上角色` : "这篇人设笔记已经有了");
+                const open = made ?? co.personaFiles()[0]?.path;
+                if (open) await plugin.app.workspace.openLinkText(open, "", false);
+            }),
+        );
+
     // ---- 口癖
     new Setting(containerEl).setName("口癖").setHeading();
     toggle(

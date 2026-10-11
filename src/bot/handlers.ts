@@ -243,6 +243,11 @@ export function setupMessageHandlers(
                     );
                     return;
                 }
+                if (/^(?:人设|角色|换人设|切换人设|\/persona)$/.test(cmd)) {
+                    const m = co.personaMessage();
+                    await ctx.reply(m.text, { parse_mode: "HTML", reply_markup: m.markup });
+                    return;
+                }
                 if (/^(?:模型|换模型|切换模型|\/model)$/.test(cmd)) {
                     const m = co.modelMessage();
                     await ctx.reply(m.text, { parse_mode: "HTML", reply_markup: m.markup });

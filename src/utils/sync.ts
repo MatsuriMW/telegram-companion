@@ -3,7 +3,7 @@
 import { App, Notice, type Plugin } from "obsidian";
 
 function waitForObsidianSync(sync: any, cb: () => void) {
-    new Notice("Waiting for Obsidian Sync to complete...");
+    new Notice("等 Obsidian Sync 同步完……");
     if (sync.syncStatus?.toLowerCase() === "fully synced") {
         cb();
         return;
@@ -26,7 +26,7 @@ function waitForRemotelySaveSync(remotely_save: any, cb: () => void) {
         return;
     } else {
         // If Remotely Save is enabled, we need to wait for it to finish.
-        new Notice("Waiting for Remotely Save to complete...");
+        new Notice("等 Remotely Save 同步完……");
         setTimeout(() => {
             const interval = setInterval(() => {
                 if (!remotely_save.isSyncing) {
@@ -49,7 +49,7 @@ function waitForRemotelySync(remotely_sync: any, cb: () => void) {
         return;
     } else {
         // If Remotely Secure is enabled, we need to wait for it to finish.
-        new Notice("Waiting for Remotely Sync to complete...");
+        new Notice("等 Remotely Sync 同步完……");
         setTimeout(() => {
             const interval = setInterval(() => {
                 if (remotely_sync.syncStatus === "idle") {

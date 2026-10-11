@@ -24,7 +24,7 @@ export class TGInboxSettingTab extends PluginSettingTab {
             cls: "bot-settings-title",
         });
 
-        new Setting(botSettingsTitle).setName("Bot").setHeading();
+        new Setting(botSettingsTitle).setName("机器人").setHeading();
 
         this.statusEl = botSettingsTitle.createDiv({
             cls: "tg-inbox-status",
@@ -38,10 +38,10 @@ export class TGInboxSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Bot token")
-            .setDesc("Get your bot token from @BotFather")
+            .setDesc("在 Telegram 里找 @BotFather 建一个机器人，把它给你的 token 贴在这里")
             .addText((text) =>
                 text
-                    .setPlaceholder("Enter your bot token")
+                    .setPlaceholder("贴上 bot token")
                     .setValue(this.plugin.settings.token)
                     .onChange(async (value) => {
                         this.plugin.settings.token = value;
@@ -51,18 +51,18 @@ export class TGInboxSettingTab extends PluginSettingTab {
             .addButton((button) => {
                 button.setButtonText("Restart").onClick(async () => {
                     this.plugin.initBot();
-                    this.statusEl.setText("Restarting...");
+                    this.statusEl.setText("正在重启……");
                 });
             });
 
         new Setting(containerEl)
-            .setName("Allowed users")
+            .setName("白名单")
             .setDesc(
-                "List of usernames or IDs of users whose messages will be received. Separate multiple entries with commas.",
+                "只处理这些人发来的消息。填 Telegram 用户名（不带 @）或数字 ID，多个用逗号隔开",
             )
             .addText((text) =>
                 text
-                    .setPlaceholder("Enter Telegram usernames or id")
+                    .setPlaceholder("用户名或数字 ID")
                     .setValue(this.plugin.settings.allow_users.join(","))
                     .onChange(async (value) => {
                         this.plugin.settings.allow_users = value
@@ -73,11 +73,11 @@ export class TGInboxSettingTab extends PluginSettingTab {
                     }),
             );
 
-        new Setting(containerEl).setName("Message formatting").setHeading();
+        new Setting(containerEl).setName("消息怎么记").setHeading();
 
         new Setting(containerEl)
-            .setName("Download media")
-            .setDesc("Toggle to download media files along with messages.")
+            .setName("下载图片和文件")
+            .setDesc("把消息里的图片、文件存进库里，并嵌进日记")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.download_media).onChange(async (value) => {
                     this.plugin.settings.download_media = value;
@@ -92,11 +92,11 @@ export class TGInboxSettingTab extends PluginSettingTab {
         this.toggleVisibility(downloadDirContainer, this.plugin.settings.download_media);
 
         new Setting(downloadDirContainer)
-            .setName("Download directory")
-            .setDesc("Specify the directory for downloading media files")
+            .setName("存到哪个文件夹")
+            .setDesc("图片和文件存放的文件夹")
             .addText((text) =>
                 text
-                    .setPlaceholder("Enter download directory")
+                    .setPlaceholder("文件夹路径")
                     .setValue(this.plugin.settings.download_dir)
                     .onChange(async (value) => {
                         this.plugin.settings.download_dir = value;
@@ -105,15 +105,15 @@ export class TGInboxSettingTab extends PluginSettingTab {
             );
 
         const message_template_desc = document.createDocumentFragment();
-        message_template_desc.append("Customize the message template. ");
+        message_template_desc.append("每条消息记成什么样。");
         const message_template_wiki = document.createElement("a");
         message_template_wiki.href =
             "https://github.com/icealtria/obsidian-telegram-inbox/wiki/Message-template";
-        message_template_wiki.text = "Learn more";
+        message_template_wiki.text = "模板里能用的变量（英文）";
         message_template_desc.append(message_template_wiki);
 
         new Setting(containerEl)
-            .setName("Message template")
+            .setName("消息模板")
             .setDesc(message_template_desc)
             .addTextArea((textArea) => {
                 textArea.inputEl.rows = 3;
@@ -127,11 +127,11 @@ export class TGInboxSettingTab extends PluginSettingTab {
                     try {
                         Mustache.parse(this.plugin.settings.message_template);
                         templateValidStatus.setText(
-                            "✅ Template format is correct. This is to ensure that the program does not crash, doesn't mean the fields are correct.",
+                            "✅ 模板格式没问题（只检查了格式，不保证里面的变量名都对）",
                         );
                     } catch (err) {
                         console.error("Error parsing message template:", err);
-                        templateValidStatus.setText(`❌ Error parsing template: ${err.message}`);
+                        templateValidStatus.setText(`❌ 模板格式有错：${err.message}`);
                     }
                 });
             });
@@ -139,14 +139,14 @@ export class TGInboxSettingTab extends PluginSettingTab {
         const templateValidStatus = containerEl.createDiv();
 
         new Setting(containerEl)
-            .setName("Action after reception")
+            .setName("收到以后")
             .setDesc(
-                "Choose what to do after a message is successfully received. 'Delete' requires appropriate bot permissions (e.g., admin in channels/groups).",
+                "消息记好以后怎么示意。「删除消息」需要机器人有相应权限（在频道或群里要是管理员）",
             )
             .addDropdown((dropdown) => {
                 dropdown
-                    .addOption("react", "React with ❤")
-                    .addOption("delete", "Delete message")
+                    .addOption("react", "点一个 ❤")
+                    .addOption("delete", "删除消息")
                     .setValue(this.plugin.settings.action_after_reception)
                     .onChange(async (value: ActionAfterReception) => {
                         this.plugin.settings.action_after_reception = value;
@@ -154,13 +154,11 @@ export class TGInboxSettingTab extends PluginSettingTab {
                     });
             });
 
-        new Setting(containerEl).setName("Advanced").setHeading();
+        new Setting(containerEl).setName("进阶").setHeading();
 
         new Setting(containerEl)
-            .setName("Reverse order")
-            .setDesc(
-                "Reverse the order of messages. This is useful if you want to see the latest messages first.",
-            )
+            .setName("新消息放在上面")
+            .setDesc("倒序排列，最新的消息在最前面")
             .addToggle((toggle) => {
                 toggle.setValue(this.plugin.settings.reverse_order).onChange(async (value) => {
                     this.plugin.settings.reverse_order = value;
@@ -169,8 +167,8 @@ export class TGInboxSettingTab extends PluginSettingTab {
             });
 
         new Setting(containerEl)
-            .setName("Insert after heading")
-            .setDesc("Insert messages after a specific heading.")
+            .setName("插到某个标题后面")
+            .setDesc("把消息插到日记里指定的那一行后面，而不是文末")
             .addToggle((toggle) => {
                 toggle
                     .setValue(this.plugin.settings.insert_after_heading)
@@ -187,8 +185,8 @@ export class TGInboxSettingTab extends PluginSettingTab {
         this.toggleVisibility(targetHeadingContainer, this.plugin.settings.insert_after_heading);
 
         new Setting(targetHeadingContainer)
-            .setName("Target heading")
-            .setDesc("Messages will be inserted after this heading (e.g. '## Inbox').")
+            .setName("哪个标题")
+            .setDesc("消息会插在这一行后面，比如 ## Inbox；要和日记里那一行一模一样")
             .addText((text) => {
                 text.setPlaceholder("## Inbox")
                     .setValue(this.plugin.settings.target_heading)
@@ -199,9 +197,9 @@ export class TGInboxSettingTab extends PluginSettingTab {
             });
 
         new Setting(containerEl)
-            .setName("Disable automatically receiving on Startup")
+            .setName("启动时不自动收消息")
             .setDesc(
-                "If it is disabled, you will need to manually run a command to start bot or get updates.",
+                "打开以后要自己运行命令「启动机器人」或「收一次消息」才会收。两台设备都装了这个插件时，可以在其中一台打开",
             )
             .addToggle((toggle) => {
                 toggle
@@ -213,17 +211,17 @@ export class TGInboxSettingTab extends PluginSettingTab {
             });
 
         new Setting(containerEl)
-            .setName("Remove text formatting")
+            .setName("去掉文字格式")
             .setDesc(
                 createFragment((fragment) => {
                     fragment.append(
-                        "Remove text formatting like ",
-                        createEl("b", { text: "bold" }),
-                        ", ",
-                        createEl("i", { text: "italic" }),
-                        ", ",
-                        createEl("s", { text: "strikethrough" }),
-                        " etc.",
+                        "去掉消息里的",
+                        createEl("b", { text: "粗体" }),
+                        "、",
+                        createEl("i", { text: "斜体" }),
+                        "、",
+                        createEl("s", { text: "删除线" }),
+                        "等格式",
                     );
                 }),
             )
@@ -237,9 +235,9 @@ export class TGInboxSettingTab extends PluginSettingTab {
             });
 
         const markdownEscaper = new Setting(containerEl)
-            .setName("Markdown escaper")
+            .setName("转义 Markdown 符号")
             .setDesc(
-                "Use Markdown escaper for text. For example: '[link](https://example.com)' will display as '[link](https://example.com)' instead of a link.",
+                "让消息里的 Markdown 符号原样显示。比如 [link](https://example.com) 会显示成这串字符，而不是一个链接",
             )
             .addToggle((toggle) => {
                 toggle.setValue(this.plugin.settings.markdown_escaper).onChange(async (value) => {
@@ -254,8 +252,8 @@ export class TGInboxSettingTab extends PluginSettingTab {
         }
 
         new Setting(containerEl)
-            .setName("Save to custom path")
-            .setDesc("Toggle to save messages to a custom path.")
+            .setName("存到指定的笔记")
+            .setDesc("不记进日记，改记到你指定的笔记里")
             .addToggle((toggle) => {
                 toggle.setValue(this.plugin.settings.is_custom_file).onChange(async (value) => {
                     this.plugin.settings.is_custom_file = value;
@@ -266,11 +264,11 @@ export class TGInboxSettingTab extends PluginSettingTab {
             });
 
         const custom_path_desc = document.createDocumentFragment();
-        custom_path_desc.append("Specify the path for saving messages. ");
+        custom_path_desc.append("消息存到哪篇笔记。");
         const custom_path_wiki = document.createElement("a");
         custom_path_wiki.href =
             "https://github.com/icealtria/obsidian-telegram-inbox/wiki/Custom-path";
-        custom_path_wiki.text = "Learn more";
+        custom_path_wiki.text = "路径里能用的变量（英文）";
         custom_path_desc.append(custom_path_wiki);
 
         const customPathContainer = containerEl.createDiv({
@@ -279,10 +277,10 @@ export class TGInboxSettingTab extends PluginSettingTab {
         this.toggleVisibility(customPathContainer, this.plugin.settings.is_custom_file);
 
         new Setting(customPathContainer)
-            .setName("Custom path")
+            .setName("笔记路径")
             .setDesc(custom_path_desc)
             .addText((text) => {
-                text.setPlaceholder("Default: Telegram-Inbox.md")
+                text.setPlaceholder("默认：Telegram-Inbox.md")
                     .setValue(this.plugin.settings.custom_file_path)
                     .onChange((value) => {
                         this.plugin.settings.custom_file_path = value;
@@ -297,9 +295,9 @@ export class TGInboxSettingTab extends PluginSettingTab {
 
         // Daily note time cutoff setting
         const timeCutoffSetting = new Setting(timeCutoffContainer)
-            .setName("Daily note time cutoff")
+            .setName("日界时间")
             .setDesc(
-                "Set the time cutoff for daily notes. Messages received before this time will be saved to the previous day's note. Format: HH:MM (24-hour)",
+                "几点以前发的消息算前一天。经常熬夜的话设成 04:00 之类，凌晨发的就会记进前一天的日记。格式 HH:MM（24 小时制）",
             )
             .addText((text) => {
                 text.setPlaceholder("00:00")
@@ -310,8 +308,8 @@ export class TGInboxSettingTab extends PluginSettingTab {
             });
 
         const runAfterSyncSetting = new Setting(containerEl)
-            .setName("Run after vault synced")
-            .setDesc("Run the bot after Obsidian sync is complete on startup.")
+            .setName("等同步完再启动")
+            .setDesc("启动时等 Obsidian 同步完成再开始收消息")
             .addToggle((toggle) => {
                 toggle.setValue(this.plugin.settings.run_after_sync).onChange(async (value) => {
                     this.plugin.settings.run_after_sync = value;
@@ -320,9 +318,7 @@ export class TGInboxSettingTab extends PluginSettingTab {
             });
 
         if (!hasSyncPlugin(this.app)) {
-            runAfterSyncSetting.setDesc(
-                "This setting requires Obsidian Sync or Remotely plugin to be installed.",
-            );
+            runAfterSyncSetting.setDesc("要装了 Obsidian Sync 或 Remotely 系列同步插件才能用");
             runAfterSyncSetting.setDisabled(true);
             runAfterSyncSetting.setClass("tg-inbox-setting-disabled");
         }
@@ -330,19 +326,19 @@ export class TGInboxSettingTab extends PluginSettingTab {
         const { obsidianSync, remotelySave, remotelySync } = getSyncStatus(this.app);
         const syncStatusDiv = containerEl.createDiv({ cls: "tg-inbox-sync-status" });
         if (obsidianSync) {
-            syncStatusDiv.createDiv({ text: "Obsidian Sync: enabled" });
+            syncStatusDiv.createDiv({ text: "Obsidian Sync：已启用" });
         }
         if (remotelySave) {
-            syncStatusDiv.createDiv({ text: "Remotely Save: enabled" });
+            syncStatusDiv.createDiv({ text: "Remotely Save：已启用" });
         }
         if (remotelySync) {
-            syncStatusDiv.createDiv({ text: "Remotely Sync: enabled" });
+            syncStatusDiv.createDiv({ text: "Remotely Sync：已启用" });
         }
 
         new Setting(containerEl)
-            .setName("Save as list items")
+            .setName("记成列表项")
             .setDesc(
-                'Turn every top-level line of a message into a list item ("- "), with a photo nested under its caption. For outliner-style daily notes.',
+                "消息里每一行顶格的文字都变成一个列表项（前面加「- 」），图片挂在配文下面。日记是大纲式写法的话打开",
             )
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.as_list_items).onChange(async (value) => {
@@ -369,12 +365,12 @@ export class TGInboxSettingTab extends PluginSettingTab {
         try {
             const me = await this.plugin.getBotInfo();
             if (me) {
-                this.statusEl.setText(`✅ Bot connected as @${me.username}`);
+                this.statusEl.setText(`✅ 已连接 @${me.username}`);
             } else {
-                this.statusEl.setText("❌ Bot not connected");
+                this.statusEl.setText("❌ 没连上");
             }
         } catch {
-            this.statusEl.setText("❌ Bot not connected");
+            this.statusEl.setText("❌ 没连上");
         }
     }
 
@@ -391,10 +387,7 @@ export class TGInboxSettingTab extends PluginSettingTab {
         } else {
             // Invalid time format
             inputEl.classList.add("tg-inbox-time-input-error");
-            this.showErrorText(
-                setting,
-                "Invalid time format. Please use HH:MM format (00:00-23:59)",
-            );
+            this.showErrorText(setting, "时间格式不对，要写成 HH:MM（00:00–23:59）");
         }
     }
 

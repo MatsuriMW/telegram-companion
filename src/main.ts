@@ -26,7 +26,7 @@ export default class TGInbox extends Plugin {
         );
 
         if (this.settings.disable_auto_reception) {
-            this.addRibbonIcon("send", "Telegram Inbox: Get Updates", () => {
+            this.addRibbonIcon("send", "Telegram Companion：收一次消息", () => {
                 this.bot?.getUpdates();
             });
         }
@@ -51,19 +51,19 @@ export default class TGInbox extends Plugin {
     addCommands() {
         this.addCommand({
             id: "tg-inbox-getupdates",
-            name: "Get Updates",
+            name: "收一次消息",
             callback: () => this.bot?.getUpdates(),
         });
 
         this.addCommand({
             id: "tg-inbox-start",
-            name: "Start Telegram Bot",
+            name: "启动机器人",
             callback: () => this.startBot(),
         });
 
         this.addCommand({
             id: "tg-inbox-stop",
-            name: "Stop Telegram Bot",
+            name: "停止机器人",
             callback: () => this.stopBot(),
         });
 
@@ -129,7 +129,7 @@ export default class TGInbox extends Plugin {
     async initBot() {
         try {
             if (!this.settings.token) {
-                new Notice("Telegram bot token not set");
+                new Notice("还没填 Telegram bot token");
                 return;
             }
             await this.stopBot();
@@ -139,13 +139,13 @@ export default class TGInbox extends Plugin {
             }
         } catch (error) {
             console.error("Error launching bot:", error);
-            new Notice("Error launching bot");
+            new Notice("机器人没启动成功");
             this.bot = null;
         }
     }
 
     async startBot() {
-        new Notice("Telegram bot starting");
+        new Notice("Telegram 机器人启动中");
         if (this.bot) {
             this.bot.start();
         }
@@ -156,7 +156,7 @@ export default class TGInbox extends Plugin {
             if (this.bot) {
                 await this.bot.bot.stop();
                 console.log("bot stopped");
-                new Notice("Telegram bot stopped");
+                new Notice("Telegram 机器人已停止");
             }
         } catch (error) {
             console.error("Error stopping bot:", error);

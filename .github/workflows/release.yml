@@ -6,6 +6,9 @@ on:
       - "*.*.*"
   workflow_dispatch:
   
+permissions:
+  contents: write
+
 jobs:
   build:
   
@@ -31,7 +34,7 @@ jobs:
       uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/')
       with:
-          draft: true
+          draft: false
           files: |
               main.js
               manifest.json

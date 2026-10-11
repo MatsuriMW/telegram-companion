@@ -52,6 +52,23 @@ const PROFILE_TEMPLATE = `> 陪伴机器人每次回你之前都会先读这一�
 	- 先陪着，再请我联系身边信任的人或当地的心理援助热线
 `;
 
+const PERSONA_TEMPLATE = `> 打开设置里的「人设」以后，机器人回你时会扮演这页写的角色。想换角色就改这页；想要多个角色，把设置里的路径填成一个文件夹，每篇笔记写一个，在 Telegram 里发「人设」切换。
+
+- 你是谁
+	- （角色的名字、身份、性格，和我是什么关系）
+- 怎么说话
+	- （语气、口头禅、怎么称呼我）
+	- （格式：比如动作和神态写在括号里；一次回几行）
+- 我的日记
+	- （比如：你知道我每天在做什么，可以自然地提起。或者：不要提日记里的事，只按角色聊）
+- 不要做的事
+	- （比如：不要跳出角色解释自己是 AI）
+`;
+
+// 默认人设（没开「人设」时用）：一个爱他、关心他的母性角色。想换成别的，在设置里打开「人设」写自己的
+const DEFAULT_PERSONA =
+    "你是一个很爱他、很关心他的人，带着母亲那样的温柔看着他：无条件站在他这边，看得见他的辛苦，会心疼他，也打心底相信他。你读过他的日记，知道他每天在做什么。这份关心是给一个成年人的：不唠叨、不催促、不说教，不把他当小孩，不拿「为你好」压他。";
+
 const firstEmoji = (l: string) => (/^\p{Extended_Pictographic}/u.exec(l) || [""])[0];
 const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const pick = <T>(a: T[]): T => a[Math.floor(Math.random() * a.length)];
@@ -127,6 +144,75 @@ export class Companion {
     async profileText(): Promise<string> {
         return (await this.read(this.cfg.profilePath)).replace(/^---\n[\s\S]*?\n---\n/, "");
     }
+    // ---- 人设：让它扮演一个角色（角色扮演、语 C……）。路径是一篇笔记，或者一个文件夹（每篇笔记一个角色）
+    personaFiles(): TFile[] {
+        const f = this.app.vault.getAbstractFileByPath(normalizePath(this.cfg.personaPath || ""));
+        if (f instanceof TFile) return [f];
+        if (f instanceof TFolder) {
+            return f.children
+                .filter((x): x is TFile => x instanceof TFile && x.extension === "md")
+                .sort((a, b) => a.name.localeCompare(b.name));
+        }
+        return [];
+    }
+    personaFile(): TFile | null {
+        if (!this.cfg.personaOn) return null;
+        const files = this.personaFiles();
+        return files.find((f) => f.path === this.cfg.personaActive) ?? files[0] ?? null;
+    }
+    async personaText(): Promise<string> {
+        const f = this.personaFile();
+        if (!f) return "";
+        return (await this.app.vault.cachedRead(f))
+            .replace(/^---\n[\s\S]*?\n---\n/, "")
+            .replace(/^>.*\n/gm, "") // 模板开头那段给人看的说明
+            .trim()
+            .slice(0, 6000);
+    }
+    personaMessage(): { text: string; markup: InlineKeyboard } {
+        const files = this.personaFiles();
+        const cur = this.personaFile();
+        const rows: InlineKeyboard["inline_keyboard"] = files
+            .slice(0, 20)
+            .map((f, i) => [
+                {
+                    text: (cur?.path === f.path ? "✅ " : "") + f.basename,
+                    callback_data: `co|persona|${i}`,
+                },
+            ]);
+        rows.push([
+            {
+                text: (cur ? "" : "✅ ") + "默认（爱你、关心你的那个人）",
+                callback_data: "co|persona|off",
+            },
+        ]);
+        const now = cur ? `「${this.esc(cur.basename)}」` : "默认的那个爱你、关心你的人";
+        const hint = files.length
+            ? "点下面的按钮切换；角色怎么说话，写在对应的笔记里"
+            : `还没有人设笔记：在 Obsidian 的插件设置里点「新建模板」，或者把「人设笔记」填成一篇笔记 / 一个文件夹（现在填的是 ${this.esc(this.cfg.personaPath)}）`;
+        return {
+            text: `🎭 <b>现在的人设</b>\n${now}\n\n<i>${hint}</i>`,
+            markup: { inline_keyboard: rows },
+        };
+    }
+    async createPersona(): Promise<string | null> {
+        const base = normalizePath(this.cfg.personaPath || "陪伴人设.md");
+        const at = this.app.vault.getAbstractFileByPath(base);
+        // 路径是文件夹：在里面新建一篇；是笔记：没有才建
+        const p =
+            at instanceof TFolder
+                ? normalizePath(`${base}/新角色.md`)
+                : base.endsWith(".md")
+                  ? base
+                  : `${base}.md`;
+        if (this.app.vault.getAbstractFileByPath(p)) return null;
+        const dir = p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "";
+        if (dir && !this.app.vault.getAbstractFileByPath(dir))
+            await this.app.vault.createFolder(dir);
+        await this.app.vault.create(p, PERSONA_TEMPLATE);
+        return p;
+    }
+
     esc(s: unknown): string {
         return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
@@ -192,12 +278,10 @@ export class Companion {
         const rows: InlineKeyboard["inline_keyboard"] = [];
         for (let i = 0; i < ch.length; i += 2) {
             rows.push(
-                ch
-                    .slice(i, i + 2)
-                    .map((x) => ({
-                        text: (x.on ? "✅ " : "") + x.label,
-                        callback_data: `co|model|${x.id}`,
-                    })),
+                ch.slice(i, i + 2).map((x) => ({
+                    text: (x.on ? "✅ " : "") + x.label,
+                    callback_data: `co|model|${x.id}`,
+                })),
             );
         }
         return {
@@ -211,20 +295,21 @@ export class Companion {
         const txt = this.digestJournal(await this.readDay(day), 220);
         const stats = (await this.extraFacts(day, "day")).join("\n");
         const profile = await this.profileText();
+        const persona = await this.personaText();
         const prompt = `我刚在 Telegram 里说今天收工了。下面是我今天（${day.format("YYYY-MM-DD dddd")}）的日记摘要：DONE 或 [x] 是做完的，TODO 或 [ ] 是还没做的，FAILED 是没做成的。
 ${stats ? `\n今天的统计：\n${stats}\n` : ""}
 请写一条发到 Telegram 的收工小结，用${this.cfg.lang}，只用 Telegram 支持的 HTML 标签（<b> <i>），不要 Markdown，不要 <br>。多用 emoji。结构：
 🌙 第一行加粗，一句话说今天是怎样的一天
 ✅ 今天做成了什么：按事情归类，3～7 条，每条一行，写具体，能看出价值的点一下
 ⏭ 明天先做哪一件：从没做完的里挑最重要的一件，给一个 10 分钟就能开始的第一步
-💬 最后 3～4 句给我的话，按下面陪伴档案里「回我的时候」的要求写（档案里没写的话：不要鸡汤、不要空洞夸奖、不要感叹号堆砌；用今天日记里的具体事实说明我做得不错、我的能力在哪；没做完的事要说成是计划或系统的问题，不是我这个人的问题；语气像一个很懂我、很理性又很温柔的朋友。最后一句可以让我安心去睡）。日记里别人说的话和摘抄不要套在我身上。
+💬 最后 3～4 句给我的话，按下面陪伴档案里「回我的时候」的要求写（档案里没写的话：不要鸡汤、不要空洞夸奖、不要感叹号堆砌；用今天日记里的具体事实说明我做得不错、我的能力在哪；没做完的事要说成是计划或系统的问题，不是我这个人的问题；语气像一个很爱我、很懂我、理性又温柔的人。最后一句可以让我安心去睡）。日记里别人说的话和摘抄不要套在我身上。
 全文 18 行以内。只输出正文。
 
 陪伴档案：
 ${profile || "（没有）"}
 
 今天的日记摘要：
-${txt || "（今天日记里几乎没写东西）"}`;
+${txt || "（今天日记里几乎没写东西）"}${persona ? `\n\n最后那几句给我的话，用下面这个角色的口吻写（其它部分照常）：\n${persona}` : ""}`;
         try {
             return this.tgHtml(await this.llm(prompt, 150));
         } catch (e) {
@@ -292,20 +377,39 @@ ${txt || "（今天日记里几乎没写东西）"}`;
         const base = `用${c.lang}；只回应他自己的事，日记里别人说的话、摘抄、转述的内容不要套在他身上，也不要提别人的隐私；${fresh}只用 Telegram 支持的 HTML（<b> <i>），不要 Markdown。只输出要发给他的话。`;
         const rules =
             mood === "chat"
-                ? `回复要求：像朋友聊天，1～6 行，他说得短你也短；他问问题就直接回答（你不能联网，实时信息不知道就直说）；他聊他在做的事、想法，就接着聊，可以用日记里的背景，但不要列清单、不要复述日记；不说教，不主动提醒他还有什么没做。适量 emoji（1～3 个）。${base}`
+                ? `回复要求：像亲近的人在聊天，1～6 行，他说得短你也短；他问问题就直接回答（你不能联网，实时信息不知道就直说）；他聊他在做的事、想法，就接着聊，可以用日记里的背景，但不要列清单、不要复述日记；不说教，不主动提醒他还有什么没做。适量 emoji（1～3 个）。${base}`
                 : mood === "happy"
-                  ? `回复要求：像朋友发消息，2～5 行；跟着他一起高兴，不要说教、不要提建议、不要转去聊没做完的事；他说做成了什么就具体地接住，没说就从日记里找一件他刚做成的事一起高兴，或者问他发生了什么好事。适量 emoji（2～4 个）。${base}`
-                  : `回复要求：像朋友发消息，4～8 行；只有他这句话或你们刚才的对话里明确流露出想伤害自己、不想活，才按档案里的危机部分回应，否则一个字都不要提自伤和热线；先接住情绪，引用一两件他最近具体在做的事说明你懂他的处境（不要列清单、不要复述全部日记）；不要说教、不要鸡汤、不要「加油」；建议最多一个且非常小，没必要就不给；可以用一个问题结尾让他多说一点。适量 emoji（2～4 个）。${base}`;
+                  ? `回复要求：像亲近的人发消息，2～5 行；跟着他一起高兴，不要说教、不要提建议、不要转去聊没做完的事；他说做成了什么就具体地接住，没说就从日记里找一件他刚做成的事一起高兴，或者问他发生了什么好事。适量 emoji（2～4 个）。${base}`
+                  : `回复要求：像亲近的人发消息，4～8 行；只有他这句话或你们刚才的对话里明确流露出想伤害自己、不想活，才按档案里的危机部分回应，否则一个字都不要提自伤和热线；先接住情绪，引用一两件他最近具体在做的事说明你懂他的处境（不要列清单、不要复述全部日记）；不要说教、不要鸡汤、不要「加油」；建议最多一个且非常小，没必要就不给；可以用一个问题结尾让他多说一点。适量 emoji（2～4 个）。${base}`;
+        // 人设：扮演用户写的角色。语气、格式、长短交给人设；不套话别人、不重复、危机时出戏这几条照旧
+        const persona = await this.personaText();
+        const personaMood =
+            mood === "happy"
+                ? "他现在心情很好，用角色的方式跟他一起高兴，不要借机提醒没做完的事。"
+                : mood === "low"
+                  ? "他现在情绪不太好，用角色的方式先接住他，不说教。"
+                  : "";
+        const personaRules = `回复要求：全程保持人设里的角色，语气、称呼、格式、长短都按人设来；不要跳出角色说自己是 AI 或模型，除非他明确要求出戏；人设没写到的地方，像聊天一样简短。${personaMood}只有他这句话或你们刚才的对话里明确流露出想伤害自己、不想活，才暂时放下角色，认真接住他，请他联系身边信任的人或心理援助热线（陪伴档案里写了怎么做就照着做）；否则一个字都不要提自伤和热线。人设没说不能提的话，可以自然地用上他日记里的事，但不要列清单、不要复述日记。${base}`;
         const opener =
             mood === "happy"
                 ? "他刚在 Telegram 里给你发了消息，心情很好。"
                 : mood === "chat"
                   ? "他在 Telegram 里找你聊天。"
                   : "他刚在 Telegram 里给你发了消息，情绪不太好。";
-        const prompt = `你是他很信任、也很了解他的一个朋友（他是谁写在下面的陪伴档案里）。${opener}现在是 ${moment().format("M月D日 dddd HH:mm")}。${quipNote}
+        const now = moment().format("M月D日 dddd HH:mm");
+        const head = persona
+            ? `你要扮演下面「人设」里写的角色，和他在 Telegram 里聊天（他是谁写在后面的陪伴档案里）。${opener}现在是 ${now}。${quipNote}
 
-先读他自己写的「陪伴档案」，严格按里面「回我的时候」的要求回复：
-${profile || "（他还没写陪伴档案：先接住情绪、用日记里的具体事实回应、不说教）"}
+【人设】
+${persona}
+
+【陪伴档案】（他是谁、他的处境。里面「回我的时候」的要求和人设冲突时，以人设为准）
+${profile || "（他还没写陪伴档案）"}`
+            : `${DEFAULT_PERSONA}（他是谁写在下面的陪伴档案里。）${opener}现在是 ${now}。${quipNote}
+
+先读他自己写的「陪伴档案」。里面「回我的时候」是他对你的要求，和上面的说法有出入时以他写的为准：
+${profile || "（他还没写陪伴档案：先接住情绪、用日记里的具体事实回应、不说教）"}`;
+        const prompt = `${head}
 
 他最近的情况（来自他的 Obsidian 日记，DONE 或 [x] 是做完的，TODO 或 [ ] 是没做的，「←」是从前几天拖过来的）：
 ${facts.map((f) => "- " + f).join("\n")}
@@ -315,7 +419,7 @@ ${week.length ? `\n更早几天（近一周，用来看他一直在做什么、�
 ${talk ? `你们刚才的对话：\n${talk}\n` : ""}${said ? `\n你最近已经说过的话（不在上面这段对话里的）：\n${said}\n` : ""}
 他现在说：「${text}」
 
-${rules}`;
+${persona ? personaRules : rules}`;
         let reply: string;
         let failed = false;
         try {
@@ -627,6 +731,27 @@ ${this.chatLines(pend)}
     /** 按钮回调：画像建议的 ✅ / ❌、切模型。 */
     async onCallback(act: string, id: string): Promise<CallbackResult> {
         const c = this.cfg;
+        if (act === "persona") {
+            if (id === "off") {
+                c.personaOn = false;
+            } else {
+                const f = this.personaFiles()[+id];
+                if (!f) return { toast: "这篇人设找不到了" };
+                c.personaOn = true;
+                c.personaActive = f.path;
+            }
+            // 换了角色：这段对话的上下文和「说过的话」不带过去
+            if (c.chat) c.chat.history = [];
+            c.said = [];
+            await this.plugin.saveSettings();
+            const m = this.personaMessage();
+            const cur = this.personaFile();
+            return {
+                toast: cur ? `现在是「${cur.basename}」` : "已关掉人设",
+                edit: m.text,
+                markup: m.markup,
+            };
+        }
         if (act === "model") {
             if (!setBackend(c, id)) return { toast: "没有这个后端" };
             await this.plugin.saveSettings();

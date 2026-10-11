@@ -43,6 +43,7 @@ export function telegramCommands(plugin: TGInbox): { command: string; descriptio
             { command: "me", description: "🪞 你现在对我的了解" },
             { command: "profile", description: "🔄 现在更新对我的了解" },
             { command: "model", description: "🧠 看 / 切换背后的模型" },
+            { command: "persona", description: "🎭 看 / 切换人设" },
         );
     }
     out.push(
@@ -95,6 +96,7 @@ export function helpHtml(plugin: TGInbox): string {
         "<code>你了解我什么</code> /me 我现在对你的了解",
         "<code>更新画像</code> /profile 现在就更新（平时每周日自动，聊得多的时候聊完也会记）",
         "<code>模型</code> /model 看现在用哪个模型、点按钮切换",
+        "<code>人设</code> /persona 让我扮演一个角色、换角色",
         "/task 内容 记一条待办",
     );
     const quips = (plugin.companion.cfg.quips || [])
