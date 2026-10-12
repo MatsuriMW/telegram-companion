@@ -2,9 +2,18 @@ import { debounce, moment, normalizePath, TFile, TFolder, type App } from "obsid
 import { getAllDailyNotes, getDailyNote } from "obsidian-daily-notes-interface";
 import type TGInbox from "../main";
 import { notifyPlugin, spiralPlugin } from "../integrations";
-import { backendChoices, backendLabel, callModel, setBackend } from "./llm";
+import {
+    backendChoices,
+    backendLabel,
+    backendShort,
+    callModel,
+    fallbackBackend,
+    setBackend,
+} from "./llm";
+import { FallbackRunner, type ModelReply } from "./fallback";
 import {
     COMPANION_DEFAULTS,
+    type Backend,
     type ChatState,
     type ChatTurn,
     type CompanionSettings,
@@ -95,6 +104,7 @@ export class Companion {
     private digesting = false;
     private notes: Record<string, TFile> | null = null;
     private notesAt = 0;
+    private runner = new FallbackRunner();
 
     constructor(private plugin: TGInbox) {
         this.app = plugin.app;
@@ -275,14 +285,41 @@ export class Companion {
     }
 
     // ================= 模型 =================
-    llm(prompt: string, timeoutSec = 240): Promise<string> {
-        return callModel(this.cfg, prompt, timeoutSec);
+    // 主后端报错（额度用完、超时、登录失效）时，用设置里的备用后端重试一次
+    llmFull(prompt: string, timeoutSec = 240): Promise<ModelReply> {
+        return this.runner.run(this.cfg.backend, fallbackBackend(this.cfg), (b) =>
+            callModel(this.cfg, prompt, timeoutSec, b),
+        );
+    }
+    async llm(prompt: string, timeoutSec = 240): Promise<string> {
+        return (await this.llmFull(prompt, timeoutSec)).text;
+    }
+    /** 只调指定的后端，不走备用（设置页的测试按钮用）。 */
+    llmOn(backend: Backend, prompt: string, timeoutSec = 240): Promise<string> {
+        return callModel(this.cfg, prompt, timeoutSec, backend);
+    }
+    /** 参数或后端变了：下一次重新从主后端试起。 */
+    modelChanged(): void {
+        this.runner.reset();
+    }
+    /** 这次是备用后端回的话，回复末尾注明一句。 */
+    fallbackNote(r: ModelReply): string {
+        if (!r.fellBack) return "";
+        const from = this.esc(backendShort(this.cfg, r.fellBack.from));
+        const to = this.esc(backendShort(this.cfg, r.backend));
+        const why = this.esc(r.fellBack.why.replace(/\s+/g, " ").slice(0, 60));
+        return `\n<i>（${from}没连上：${why}。这次是 ${to} 回的）</i>`;
     }
     backendLabel(): string {
         return backendLabel(this.cfg);
     }
+    fallbackLabel(): string | null {
+        const b = fallbackBackend(this.cfg);
+        return b ? backendLabel(this.cfg, b) : null;
+    }
     modelMessage(): { text: string; markup: InlineKeyboard } {
         const ch = backendChoices(this.cfg);
+        const fb = this.fallbackLabel();
         const rows: InlineKeyboard["inline_keyboard"] = [];
         for (let i = 0; i < ch.length; i += 2) {
             rows.push(
@@ -293,7 +330,7 @@ export class Companion {
             );
         }
         return {
-            text: `🧠 <b>现在用的模型</b>\n${this.esc(this.backendLabel())}\n\n<i>点下面的按钮切换；Anthropic API 和 OpenAI 兼容接口要先在 Obsidian 的插件设置里填好 key 和模型名才会出现</i>`,
+            text: `🧠 <b>现在用的模型</b>\n${this.esc(this.backendLabel())}${fb ? `\n🛟 备用：${this.esc(fb)}` : ""}\n\n<i>点下面的按钮切换；Anthropic API 和 OpenAI 兼容接口要先在 Obsidian 的插件设置里填好 key 和模型名才会出现</i>`,
             markup: { inline_keyboard: rows },
         };
     }
@@ -319,7 +356,8 @@ ${profile || "（没有）"}
 今天的日记摘要：
 ${txt || "（今天日记里几乎没写东西）"}${persona ? `\n\n最后那几句给我的话，用下面这个角色的口吻写（其它部分照常）：\n${persona}` : ""}`;
         try {
-            return this.tgHtml(await this.llm(prompt, 150));
+            const r = await this.llmFull(prompt, 150);
+            return this.tgHtml(r.text) + this.fallbackNote(r);
         } catch (e) {
             console.error("[telegram-companion] 收工小结", e);
             // 兜底：不靠模型，列出今天做完的
@@ -429,9 +467,12 @@ ${talk ? `你们刚才的对话：\n${talk}\n` : ""}${said ? `\n你最近已经�
 
 ${persona ? personaRules : rules}`;
         let reply: string;
+        let note = ""; // 备用后端回的时候加在末尾；不算进它「说过的话」
         let failed = false;
         try {
-            reply = this.tgHtml(await this.llm(prompt, 150));
+            const r = await this.llmFull(prompt, 150);
+            reply = this.tgHtml(r.text);
+            note = this.fallbackNote(r);
         } catch (e) {
             console.error("[telegram-companion] 陪聊", e);
             failed = true;
@@ -453,7 +494,7 @@ ${persona ? personaRules : rules}`;
                 .slice(-30);
         }
         const next: ChatTurn[] = [...history, { who: "他", text }, { who: "你", text: plain }];
-        return { html: reply, mood, history: next.slice(-16) };
+        return { html: reply + note, mood, history: next.slice(-16) };
     }
 
     // ================= 🔄 陪伴档案（画像）=================
@@ -762,6 +803,7 @@ ${this.chatLines(pend)}
         }
         if (act === "model") {
             if (!setBackend(c, id)) return { toast: "没有这个后端" };
+            this.modelChanged();
             await this.plugin.saveSettings();
             const m = this.modelMessage();
             return { toast: `已切到 ${this.backendLabel()}`, edit: m.text, markup: m.markup };

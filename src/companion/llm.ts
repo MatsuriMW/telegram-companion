@@ -4,11 +4,30 @@ import { BACKEND_NAMES, CLI_MODELS, type Backend, type CompanionSettings } from 
 // 模型后端：Claude Code 命令行 / Anthropic API / OpenAI 兼容接口（DeepSeek、OpenRouter、Ollama……）
 // 每次调用只发一段提示词、拿回一段文字，不带工具、不存会话。
 
-export function backendLabel(c: CompanionSettings): string {
-    if (c.backend === "anthropic")
-        return `${BACKEND_NAMES.anthropic} · ${c.anthropicModel || "未填模型"}`;
-    if (c.backend === "openai") return `${BACKEND_NAMES.openai} · ${c.openaiModel || "未填模型"}`;
+export function backendLabel(c: CompanionSettings, b: Backend = c.backend): string {
+    if (b === "anthropic") return `${BACKEND_NAMES.anthropic} · ${c.anthropicModel || "未填模型"}`;
+    if (b === "openai") return `${BACKEND_NAMES.openai} · ${c.openaiModel || "未填模型"}`;
     return `${BACKEND_NAMES.cli} · ${c.cliModel || "默认模型"}`;
+}
+
+/** 写在回复末尾的短名字。 */
+export function backendShort(c: CompanionSettings, b: Backend): string {
+    if (b === "openai") return c.openaiModel || BACKEND_NAMES.openai;
+    if (b === "anthropic") return c.anthropicModel || BACKEND_NAMES.anthropic;
+    return BACKEND_NAMES.cli;
+}
+
+/** 这个后端的参数填好了没有。 */
+export function backendReady(c: CompanionSettings, b: Backend): boolean {
+    if (b === "anthropic") return !!(c.anthropicKey && c.anthropicModel);
+    if (b === "openai") return !!(c.openaiBase && c.openaiModel);
+    return Platform.isDesktopApp;
+}
+
+/** 现在能用的备用后端：选了、和主后端不是同一个、参数也填好了才算。 */
+export function fallbackBackend(c: CompanionSettings): Backend | null {
+    const b = c.fallback;
+    return b && b !== c.backend && backendReady(c, b) ? b : null;
 }
 
 export interface BackendChoice {
@@ -29,14 +48,14 @@ export function backendChoices(c: CompanionSettings): BackendChoice[] {
             });
         }
     }
-    if (c.anthropicKey && c.anthropicModel) {
+    if (backendReady(c, "anthropic")) {
         out.push({
             id: "anthropic",
             label: `Anthropic · ${c.anthropicModel}`,
             on: c.backend === "anthropic",
         });
     }
-    if (c.openaiBase && c.openaiModel)
+    if (backendReady(c, "openai"))
         out.push({ id: "openai", label: c.openaiModel, on: c.backend === "openai" });
     return out;
 }
@@ -54,8 +73,9 @@ export async function callModel(
     c: CompanionSettings,
     prompt: string,
     timeoutSec = 240,
+    backend: Backend = c.backend,
 ): Promise<string> {
-    if (c.backend === "anthropic") {
+    if (backend === "anthropic") {
         if (!c.anthropicKey) throw new Error("还没填 Anthropic API key");
         return callHttp(
             "https://api.anthropic.com/v1/messages",
@@ -73,7 +93,7 @@ export async function callModel(
             timeoutSec,
         );
     }
-    if (c.backend === "openai") {
+    if (backend === "openai") {
         if (!c.openaiBase || !c.openaiModel) throw new Error("还没填接口地址或模型名");
         return callHttp(
             c.openaiBase.replace(/\/+$/, "") + "/chat/completions",

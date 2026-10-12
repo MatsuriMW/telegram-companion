@@ -77,6 +77,8 @@ export interface CompanionSettings {
     openaiBase: string;
     openaiKey: string;
     openaiModel: string;
+    /** 主后端报错时自动换过去重试的后端；空着就是不用 */
+    fallback: Backend | "";
     // runtime state
     chat: ChatState | null;
     chatMemory: ChatMemoryItem[];
@@ -129,6 +131,7 @@ export const COMPANION_DEFAULTS: CompanionSettings = {
     openaiBase: "",
     openaiKey: "",
     openaiModel: "",
+    fallback: "",
     chat: null,
     chatMemory: [],
     said: [],

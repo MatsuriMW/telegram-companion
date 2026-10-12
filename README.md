@@ -92,7 +92,9 @@ Chat replies, summaries and profile updates call a large language model. Choose 
 
 You can fill in all three and switch at any time, in the settings or by sending `/model` in Telegram.
 
-**Where your data goes.** For each reply the plugin sends your profile note, the persona note and a digest of the last week of daily notes (task lines and top-level items, no attachments) to the model service you chose, and to no one else. API keys are stored in the plugin's own `data.json`. If your vault is synced to a public place, exclude that file.
+**Fallback backend.** Pick a second backend under 备用后端 and the bot keeps answering when the first one fails, for example when a subscription's usage limit is reached, a request times out, or a login expires. The failed request is retried once on the fallback, and the reply ends with a line saying which model answered and why the first one did not. For the next 10 minutes requests go straight to the fallback, then the first backend is tried again.
+
+**Where your data goes.** For each reply the plugin sends your profile note, the persona note and a digest of the last week of daily notes (task lines and top-level items, no attachments) to the model service you chose (or to the fallback backend, when one is set and it answered), and to no one else. API keys are stored in the plugin's own `data.json`. If your vault is synced to a public place, exclude that file.
 
 ## Works with Nautilus Spiral
 
@@ -109,7 +111,7 @@ Without these plugins the phrases above are saved like any other message, and ev
 
 - **Network**
   - Telegram Bot API (`api.telegram.org`): receives the messages you send to the bot, sends replies, and downloads photos and files from messages.
-  - The model service you chose: `api.anthropic.com` for the Anthropic API, or the base URL you entered for an OpenAI-compatible endpoint. With a local Ollama nothing leaves your computer.
+  - The model service you chose: `api.anthropic.com` for the Anthropic API, or the base URL you entered for an OpenAI-compatible endpoint. With a local Ollama nothing leaves your computer. If a fallback backend is set, the same content goes to that service instead when the first backend fails.
   - Nothing else. There are no analytics and no telemetry.
 - **Accounts**: a Telegram account to create the bot. The companion features need an account or API key for a model service, or a local Ollama. Using it only as an inbox needs no model.
 - **Local programs**: with the Claude Code CLI backend, the plugin starts the `claude` program installed on your computer to generate replies, using that program's own login. Other backends start no programs.

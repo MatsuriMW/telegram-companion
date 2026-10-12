@@ -1,4 +1,5 @@
-import { MarkdownRenderer, Notice, Setting, type Component } from "obsidian";
+import { MarkdownRenderer, Notice, Setting, type ButtonComponent, type Component } from "obsidian";
+import { backendLabel, backendReady, fallbackBackend } from "./llm";
 import type TGInbox from "../main";
 import {
     BACKEND_NAMES,
@@ -40,7 +41,11 @@ export function renderCompanionSettings(
 ): void {
     const co = plugin.companion;
     const cc = co.cfg;
-    const save = () => plugin.saveSettings();
+    // 设置一改，下一次就重新从主后端试起
+    const save = () => {
+        co.modelChanged();
+        return plugin.saveSettings();
+    };
     const toggle = (name: string, desc: string, key: BoolKey) =>
         new Setting(containerEl)
             .setName(name)
@@ -335,22 +340,48 @@ export function renderCompanionSettings(
         );
         text("　模型", "照那家服务的文档填模型名", "openaiModel");
     }
+    // 备用后端：主后端报错时自动换过去重试一次
+    const others = (Object.keys(BACKEND_NAMES) as Backend[]).filter((k) => k !== cc.backend);
+    const picked = cc.fallback && cc.fallback !== cc.backend ? cc.fallback : "";
     new Setting(containerEl)
+        .setName("备用后端")
+        .setDesc(
+            (picked && !backendReady(cc, picked)
+                ? "⚠️ 选的这个备用后端参数还没填全，现在不会生效。"
+                : "") +
+                "上面的后端报错时（额度用完、超时、登录失效），自动用备用的重试一次，回复末尾会注明这次是谁回的；之后 10 分钟直接走备用。用到备用时，日记摘要和陪伴档案也会发给备用的那家服务。备用后端的参数要先填好：把「用哪个后端」切过去填完，再切回来",
+        )
+        .addDropdown((d) => {
+            d.addOption("", "不用备用");
+            for (const k of others)
+                d.addOption(k, BACKEND_NAMES[k] + (backendReady(cc, k) ? "" : "（参数没填全）"));
+            d.setValue(picked).onChange(async (v) => {
+                cc.fallback = v as Backend | "";
+                await save();
+                redraw();
+            });
+        });
+    const fb = fallbackBackend(cc);
+    const tryOn = (b: ButtonComponent, backend: Backend, label: string) =>
+        b.setButtonText(label).onClick(async () => {
+            b.setDisabled(true).setButtonText("在等回复…");
+            try {
+                const out = await co.llmOn(backend, "只回答两个字：收到", 60);
+                new Notice(`${BACKEND_NAMES[backend]}回了：${out.slice(0, 60)}`);
+            } catch (e) {
+                new Notice(
+                    `${BACKEND_NAMES[backend]}没连上：` +
+                        String((e as Error).message || e).slice(0, 200),
+                    8000,
+                );
+            }
+            b.setDisabled(false).setButtonText(label);
+        });
+    const test = new Setting(containerEl)
         .setName("试一下")
-        .setDesc(`现在：${co.backendLabel()}`)
-        .addButton((b) =>
-            b.setButtonText("发一句测试").onClick(async () => {
-                b.setDisabled(true).setButtonText("在等回复…");
-                try {
-                    new Notice(
-                        "模型回了：" + (await co.llm("只回答两个字：收到", 60)).slice(0, 60),
-                    );
-                } catch (e) {
-                    new Notice("没连上：" + String((e as Error).message || e).slice(0, 200), 8000);
-                }
-                b.setDisabled(false).setButtonText("发一句测试");
-            }),
-        );
+        .setDesc(`现在：${co.backendLabel()}${fb ? `；备用：${backendLabel(cc, fb)}` : ""}`)
+        .addButton((b) => tryOn(b, cc.backend, "发一句测试"));
+    if (fb) test.addButton((b) => tryOn(b, fb, "测备用"));
 
     // ---- 说明
     const help = containerEl.createDiv({ cls: "tg-companion-help" });
