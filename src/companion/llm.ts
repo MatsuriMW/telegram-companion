@@ -101,6 +101,27 @@ interface CliReply {
     result?: string;
 }
 
+// The few pieces of Node's child_process used by the command-line backend,
+// declared here so the file type-checks without @types/node.
+interface NodeStream {
+    on(event: "data", cb: (chunk: { toString(): string }) => void): void;
+}
+interface NodeChild {
+    stdout: NodeStream | null;
+    stderr: NodeStream | null;
+    stdin: { write(text: string): void; end(): void } | null;
+    on(event: "error", cb: (e: Error) => void): void;
+    on(event: "close", cb: (code: number | null) => void): void;
+    kill(): void;
+}
+interface NodeChildProcess {
+    spawn: (
+        bin: string,
+        args: string[],
+        opts: { cwd: string; env: Record<string, string | undefined> },
+    ) => NodeChild;
+}
+
 async function callHttp<T extends ApiError>(
     url: string,
     headers: Record<string, string>,
@@ -144,11 +165,11 @@ function callCli(c: CompanionSettings, prompt: string, timeoutSec: number): Prom
     }
     // Node 模块只在桌面端有，用到时再取。这里必须拿真正的进程环境：
     // 打包进来的 grammy 网页版自带一个 process 替身，里面没有 HOME，命令行就找不到自己的登录。
-    const req = (window as unknown as { require: NodeJS.Require }).require;
-    const { spawn } = req("child_process") as typeof import("child_process");
-    const os = req("os") as typeof import("os");
-    const path = req("path") as typeof import("path");
-    const penv = (req("process") as typeof import("process")).env;
+    const req = (window as unknown as { require: (id: string) => unknown }).require;
+    const { spawn } = req("child_process") as NodeChildProcess;
+    const os = req("os") as { homedir(): string; tmpdir(): string };
+    const path = req("path") as { join(...parts: string[]): string; delimiter: string };
+    const penv = (req("process") as { env: Record<string, string | undefined> }).env;
     return new Promise((resolve, reject) => {
         const bin = (c.cliPath || "claude").replace(/^~(?=\/)/, os.homedir());
         const env = {
@@ -172,7 +193,7 @@ function callCli(c: CompanionSettings, prompt: string, timeoutSec: number): Prom
             "",
         ];
         if (c.cliModel) args.push("--model", c.cliModel);
-        let child: ReturnType<typeof spawn>;
+        let child: NodeChild;
         try {
             child = spawn(bin, args, { cwd: os.tmpdir(), env });
         } catch (e) {
@@ -180,8 +201,8 @@ function callCli(c: CompanionSettings, prompt: string, timeoutSec: number): Prom
         }
         let out = "";
         let err = "";
-        child.stdout?.on("data", (d: Buffer) => (out += d.toString()));
-        child.stderr?.on("data", (d: Buffer) => (err += d.toString()));
+        child.stdout?.on("data", (d) => (out += d.toString()));
+        child.stderr?.on("data", (d) => (err += d.toString()));
         const timer = window.setTimeout(() => {
             child.kill();
             reject(new Error("claude 超时"));
