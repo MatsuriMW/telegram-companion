@@ -140,11 +140,10 @@ export function renderCompanionSettings(
         "quipsOn",
     );
     cc.quips.forEach((q, i) => {
+        // 一条口癖的控件多，排成几行：触发词 + 回法 / 回什么 / 两个开关 + 删除
         const row = new Setting(containerEl)
             .setName(`口癖 ${i + 1}`)
-            .setDesc(
-                "触发词用逗号隔开；「开心」表示你说这个词的时候心情好，句子里带着它也会自动进入对话模式",
-            )
+            .setClass("tg-companion-quip")
             .addText((t) =>
                 t
                     .setPlaceholder("触发词，逗号隔开")
@@ -174,37 +173,42 @@ export function renderCompanionSettings(
                 t.inputEl.rows = 3;
             });
         }
+        row.controlEl.createDiv({ cls: "tg-companion-quip-break" });
         row.addToggle((t) =>
             t
-                .setTooltip("回完进入对话模式")
+                .setTooltip("回完这句，接下来说的话它都会接")
                 .setValue(q.chat)
                 .onChange(async (v) => {
                     q.chat = v;
                     await save();
                 }),
-        )
-            .addToggle((t) =>
-                t
-                    .setTooltip("开心：说这个词代表心情好")
-                    .setValue(q.happy)
-                    .onChange(async (v) => {
-                        q.happy = v;
-                        await save();
-                    }),
-            )
-            .addExtraButton((b) =>
-                b
-                    .setIcon("trash")
-                    .setTooltip("删掉这条")
-                    .onClick(async () => {
-                        cc.quips.splice(i, 1);
-                        await save();
-                        redraw();
-                    }),
-            );
+        );
+        row.controlEl.createSpan({ cls: "tg-companion-quip-label", text: "回完进入对话模式" });
+        row.addToggle((t) =>
+            t
+                .setTooltip("说这个词代表心情好；句子里带着它也会自动进入对话模式")
+                .setValue(q.happy)
+                .onChange(async (v) => {
+                    q.happy = v;
+                    await save();
+                }),
+        );
+        row.controlEl.createSpan({ cls: "tg-companion-quip-label", text: "开心" });
+        row.addExtraButton((b) =>
+            b
+                .setIcon("trash")
+                .setTooltip("删掉这条")
+                .onClick(async () => {
+                    cc.quips.splice(i, 1);
+                    await save();
+                    redraw();
+                }),
+        );
     });
     new Setting(containerEl)
-        .setDesc("每条后面的两个开关依次是：回完进入对话模式、开心（鼠标停在上面有提示）")
+        .setDesc(
+            "触发词用逗号隔开。「开心」表示你说这个词的时候心情好，句子里带着它也会自动进入对话模式",
+        )
         .addButton((b) =>
             b.setButtonText("添加口癖").onClick(async () => {
                 cc.quips.push({ words: "", kind: "echo", replies: "", chat: false, happy: true });
