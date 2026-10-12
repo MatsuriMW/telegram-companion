@@ -30,7 +30,7 @@ export class TelegramBot {
         this.bot = new Bot(settings.token);
 
         if (settings.disable_auto_reception) {
-            this.bot.init();
+            this.bot.init().catch((e) => console.error("[telegram-companion] bot init", e));
         }
 
         this.setupMiddlewares();
@@ -65,7 +65,7 @@ export class TelegramBot {
     start(): void {
         // Register the "/" menu; only the commands that work with what is installed.
         this.bot.api.setMyCommands(telegramCommands(this.plugin)).catch(() => {});
-        this.bot.start();
+        this.bot.start().catch((e) => console.error("[telegram-companion] bot stopped", e));
     }
 
     async getUpdates(): Promise<void> {

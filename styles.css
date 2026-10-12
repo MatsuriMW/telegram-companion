@@ -32,9 +32,10 @@ If your plugin does not need CSS, delete this file.
   margin-top: 4px;
 }
 
-.tg-inbox-time-input-error {
-  border-color: #ff6b6b !important;
-  box-shadow: 0 0 0 1px #ff6b6b !important;
+.setting-item-control input[type="text"].tg-inbox-time-input-error,
+.setting-item-control input[type="text"].tg-inbox-time-input-error:focus {
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 1px #ff6b6b;
 }
 
 .tg-inbox-setting-collapsible {

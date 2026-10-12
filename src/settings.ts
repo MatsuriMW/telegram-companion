@@ -1,4 +1,4 @@
-import { type App, PluginSettingTab, Setting } from "obsidian";
+import { type App, Component, PluginSettingTab, Setting } from "obsidian";
 import type TGInbox from "./main";
 import * as Mustache from "mustache";
 import { ActionAfterReception } from "./settings/types";
@@ -9,6 +9,8 @@ export class TGInboxSettingTab extends PluginSettingTab {
     plugin: TGInbox;
     statusEl: HTMLDivElement;
     updateId: number;
+    // Owns the Markdown rendered inside the tab; unloaded each time the tab closes or redraws.
+    private rendered = new Component();
 
     constructor(app: App, plugin: TGInbox) {
         super(app, plugin);
@@ -19,6 +21,9 @@ export class TGInboxSettingTab extends PluginSettingTab {
         const { containerEl } = this;
 
         containerEl.empty();
+        this.rendered.unload();
+        this.rendered = new Component();
+        this.rendered.load();
 
         const botSettingsTitle = containerEl.createDiv({
             cls: "bot-settings-title",
@@ -30,10 +35,10 @@ export class TGInboxSettingTab extends PluginSettingTab {
             cls: "tg-inbox-status",
         });
 
-        this.updateStatus();
+        void this.updateStatus();
 
-        this.updateId = window.setInterval(async () => {
-            await this.updateStatus();
+        this.updateId = window.setInterval(() => {
+            void this.updateStatus();
         }, 5000);
 
         new Setting(containerEl)
@@ -49,8 +54,8 @@ export class TGInboxSettingTab extends PluginSettingTab {
                     }),
             )
             .addButton((button) => {
-                button.setButtonText("Restart").onClick(async () => {
-                    this.plugin.initBot();
+                button.setButtonText("Restart").onClick(() => {
+                    void this.plugin.initBot();
                     this.statusEl.setText("正在重启……");
                 });
             });
@@ -104,13 +109,13 @@ export class TGInboxSettingTab extends PluginSettingTab {
                     }),
             );
 
-        const message_template_desc = document.createDocumentFragment();
-        message_template_desc.append("每条消息记成什么样。");
-        const message_template_wiki = document.createElement("a");
-        message_template_wiki.href =
-            "https://github.com/icealtria/obsidian-telegram-inbox/wiki/Message-template";
-        message_template_wiki.text = "模板里能用的变量（英文）";
-        message_template_desc.append(message_template_wiki);
+        const message_template_desc = createFragment((frag) => {
+            frag.append("每条消息记成什么样。");
+            frag.createEl("a", {
+                text: "模板里能用的变量（英文）",
+                href: "https://github.com/icealtria/obsidian-telegram-inbox/wiki/Message-template",
+            });
+        });
 
         new Setting(containerEl)
             .setName("消息模板")
@@ -131,7 +136,7 @@ export class TGInboxSettingTab extends PluginSettingTab {
                         );
                     } catch (err) {
                         console.error("Error parsing message template:", err);
-                        templateValidStatus.setText(`❌ 模板格式有错：${err.message}`);
+                        templateValidStatus.setText(`❌ 模板格式有错：${(err as Error).message}`);
                     }
                 });
             });
@@ -263,13 +268,13 @@ export class TGInboxSettingTab extends PluginSettingTab {
                 });
             });
 
-        const custom_path_desc = document.createDocumentFragment();
-        custom_path_desc.append("消息存到哪篇笔记。");
-        const custom_path_wiki = document.createElement("a");
-        custom_path_wiki.href =
-            "https://github.com/icealtria/obsidian-telegram-inbox/wiki/Custom-path";
-        custom_path_wiki.text = "路径里能用的变量（英文）";
-        custom_path_desc.append(custom_path_wiki);
+        const custom_path_desc = createFragment((frag) => {
+            frag.append("消息存到哪篇笔记。");
+            frag.createEl("a", {
+                text: "路径里能用的变量（英文）",
+                href: "https://github.com/icealtria/obsidian-telegram-inbox/wiki/Custom-path",
+            });
+        });
 
         const customPathContainer = containerEl.createDiv({
             cls: "tg-inbox-setting-collapsible",
@@ -284,7 +289,7 @@ export class TGInboxSettingTab extends PluginSettingTab {
                     .setValue(this.plugin.settings.custom_file_path)
                     .onChange((value) => {
                         this.plugin.settings.custom_file_path = value;
-                        this.plugin.saveSettings();
+                        void this.plugin.saveSettings();
                     });
             });
 
@@ -347,7 +352,7 @@ export class TGInboxSettingTab extends PluginSettingTab {
                 }),
             );
 
-        renderCompanionSettings(containerEl, this.plugin, () => {
+        renderCompanionSettings(containerEl, this.plugin, this.rendered, () => {
             window.clearInterval(this.updateId);
             this.display();
         });
@@ -355,6 +360,7 @@ export class TGInboxSettingTab extends PluginSettingTab {
 
     hide() {
         window.clearInterval(this.updateId);
+        this.rendered.unload();
     }
 
     private toggleVisibility(el: HTMLElement, visible: boolean) {
@@ -383,7 +389,7 @@ export class TGInboxSettingTab extends PluginSettingTab {
             inputEl.classList.remove("tg-inbox-time-input-error");
             this.removeErrorText(setting);
             this.plugin.settings.daily_note_time_cutoff = value;
-            this.plugin.saveSettings();
+            void this.plugin.saveSettings();
         } else {
             // Invalid time format
             inputEl.classList.add("tg-inbox-time-input-error");
@@ -396,13 +402,10 @@ export class TGInboxSettingTab extends PluginSettingTab {
         this.removeErrorText(setting);
 
         // Add error text
-        const errorDiv = setting.descEl.createDiv({
+        setting.descEl.createDiv({
             cls: "tg-inbox-error-text",
             text: message,
         });
-        errorDiv.style.color = "#ff6b6b";
-        errorDiv.style.fontSize = "0.8em";
-        errorDiv.style.marginTop = "4px";
     }
 
     private removeErrorText(setting: Setting) {

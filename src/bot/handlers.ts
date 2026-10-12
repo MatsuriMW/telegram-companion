@@ -31,7 +31,7 @@ async function executePostAction(ctx: Context, settings: TGInboxSettings): Promi
 
 function handleVaultError(ctx: Context, err: Error, context: string): void {
     console.error(`Failed to ${context}. Error: ${err.message}`, err);
-    ctx.reply(`Failed to ${context}. Error: ${err.message}`);
+    ctx.reply(`Failed to ${context}. Error: ${err.message}`).catch(() => {});
 }
 
 export function setupCommands(
@@ -45,7 +45,7 @@ export function setupCommands(
     bot.command("task", async (ctx) => {
         const task = `- [ ] ${ctx.match}`;
         try {
-            await vaultWriter.insertMessageToVault(task, ctx.msg as MessageUpdate);
+            await vaultWriter.insertMessageToVault(task, ctx.msg);
             await executePostAction(ctx, settings);
         } catch (err) {
             handleVaultError(ctx, err as Error, "insert task");
@@ -156,7 +156,8 @@ export function setupMessageHandlers(
         try {
             const r = mine
                 ? await plugin.companion.onCallback(act, id)
-                : await nn.onTgCallback(data);
+                : await nn?.onTgCallback?.(data);
+            if (!r) return;
             await ctx.answerCallbackQuery({ text: r.toast || "" });
             if (r.edit)
                 await ctx.editMessageText(r.edit, { parse_mode: "HTML", reply_markup: r.markup });
@@ -293,7 +294,7 @@ export function setupMessageHandlers(
             }
             if (nn?.pushInsight && /^(?:周洞察|这周做了什么|本周|\/week)$/.test(cmd)) {
                 await withThinking(ctx, THINKING.week, async () => {
-                    await nn.pushInsight(true);
+                    await nn.pushInsight?.(true);
                     return null;
                 });
                 return;
@@ -475,7 +476,7 @@ export function setupMessageHandlers(
                 mediaEmbed = `![[${filename_ext}]]`;
             } else {
                 console.error(`Failed to download media. File: ${filename_ext}, URL: ${url}`);
-                ctx.reply(`Failed to download media. File: ${filename_ext}, URL: ${url}`);
+                await ctx.reply(`Failed to download media. File: ${filename_ext}, URL: ${url}`);
             }
         }
 

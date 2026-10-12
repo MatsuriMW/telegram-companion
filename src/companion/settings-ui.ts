@@ -1,4 +1,4 @@
-import { MarkdownRenderer, Notice, Setting } from "obsidian";
+import { MarkdownRenderer, Notice, Setting, type Component } from "obsidian";
 import type TGInbox from "../main";
 import {
     BACKEND_NAMES,
@@ -12,7 +12,7 @@ type BoolKey = {
     [K in keyof CompanionSettings]: CompanionSettings[K] extends boolean ? K : never;
 }[keyof CompanionSettings];
 type TextKey = {
-    [K in keyof CompanionSettings]: CompanionSettings[K] extends string ? K : never;
+    [K in keyof CompanionSettings]: string extends CompanionSettings[K] ? K : never;
 }[keyof CompanionSettings];
 type NumKey = {
     [K in keyof CompanionSettings]: CompanionSettings[K] extends number ? K : never;
@@ -35,6 +35,7 @@ const QUIP_KINDS: Record<Quip["kind"], string> = {
 export function renderCompanionSettings(
     containerEl: HTMLElement,
     plugin: TGInbox,
+    component: Component,
     redraw: () => void,
 ): void {
     const co = plugin.companion;
@@ -58,7 +59,7 @@ export function renderCompanionSettings(
                 t.setPlaceholder(placeholder)
                     .setValue(String(cc[key] ?? ""))
                     .onChange(async (v) => {
-                        (cc[key] as string) = v.trim();
+                        cc[key] = v.trim();
                         await save();
                     });
                 if (secret) t.inputEl.type = "password";
@@ -366,7 +367,7 @@ export function renderCompanionSettings(
             await plugin.app.vault.adapter.read(guidePath),
             body,
             "",
-            plugin,
+            component,
         );
     });
 }

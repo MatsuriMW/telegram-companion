@@ -13,7 +13,8 @@
         "lint": "oxlint src",
         "test": "node --test --require tsx/cjs --require ./test/register-obsidian.cjs \"test/**/*.spec.ts\"",
         "check": "tsc --noEmit -skipLibCheck",
-        "prepare": "husky"
+        "prepare": "husky",
+        "lint:obsidian": "eslint ."
     },
     "dependencies": {
         "@telegraf/entity": "^0.5.0",
@@ -22,21 +23,25 @@
         "obsidian-daily-notes-interface": "^0.9.5"
     },
     "devDependencies": {
+        "@eslint/js": "^9.39.5",
+        "@eslint/json": "^2.1.1",
         "@types/mustache": "^4.2.6",
         "@types/node": "^25.2.2",
-        "builtin-modules": "3.3.0",
         "esbuild": "0.28.1",
+        "eslint": "^9.39.5",
+        "eslint-plugin-obsidianmd": "^0.4.2",
         "husky": "^9.1.7",
-        "lint-staged": "^17.5.1",
-        "moment": "^2.30.1",
+        "moment": "^2.31.0",
+        "nano-staged": "^1.0.2",
         "obsidian": "^1.13.1",
         "oxfmt": "^0.67.0",
         "oxlint": "^1.43.0",
         "tslib": "2.4.0",
         "tsx": "^4.23.0",
-        "typescript": "5.9.3"
+        "typescript": "5.9.3",
+        "typescript-eslint": "^8.71.1"
     },
-    "lint-staged": {
+    "nano-staged": {
         "*.{js,jsx,ts,tsx,mjs,cjs}": "pnpm oxfmt --write",
         "*.{ts,tsx}": "pnpm lint --fix"
     }

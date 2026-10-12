@@ -941,15 +941,14 @@ ${this.chatLines(pend)}
         const txt = await this.readDay(this.today());
         try {
             if (np) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const tasks: any[] = np.core
+                const tasks = np.core
                     .parseJournal(txt, np.settings)
-                    .filter((i: any) => i.kind === "task" && !i.container);
+                    .filter((i) => i.kind === "task" && !i.container);
                 out.doing = tasks.filter((t) => t.state === "open" && t.doing).map((t) => t.label);
                 out.done = tasks.filter((t) => t.state === "done").length;
                 const last = tasks
                     .filter((t) => t.state === "done" && t.stamp != null)
-                    .sort((a, b) => b.stamp - a.stamp)[0];
+                    .sort((a, b) => (b.stamp ?? 0) - (a.stamp ?? 0))[0];
                 out.lastDone = last ? last.label : null;
                 return out;
             }

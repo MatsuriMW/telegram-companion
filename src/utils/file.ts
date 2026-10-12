@@ -32,7 +32,7 @@ export async function getSavePath(
 async function getCustomFile(
     vault: Vault,
     settings: TGInboxSettings,
-    msg: MessageUpdate
+    msg: MessageUpdate,
 ): Promise<TFile> {
     let normalizedPath = normalizePath(generatePath(msg, settings));
 
@@ -50,10 +50,7 @@ async function getCustomFile(
     return await createTargetFile(vault, normalizedPath);
 }
 
-async function getDailyNoteFile(
-    settings: TGInboxSettings,
-    msg: MessageUpdate
-): Promise<TFile> {
+async function getDailyNoteFile(settings: TGInboxSettings, msg: MessageUpdate): Promise<TFile> {
     const messageDate = moment(msg.date * 1000);
     const file = await getDiaryWithTimeCutoff(settings, messageDate);
     if (!file) {
@@ -73,7 +70,7 @@ async function createTargetFile(vault: Vault, filePath: string): Promise<TFile> 
 
     try {
         const file = await vault.create(filePath, "");
-        console.log(`File created: ${filePath}`);
+        console.debug(`File created: ${filePath}`);
         return file;
     } catch (e) {
         // The file may already exist on disk (e.g. the index hadn't caught up
@@ -102,7 +99,7 @@ async function ensureDirExists(vault: Vault, dirPath: string): Promise<void> {
             return;
         }
         await vault.createFolder(dirPath);
-        console.log(`Folder created: ${dirPath}`);
+        console.debug(`Folder created: ${dirPath}`);
     } catch (e) {
         if (e instanceof Error && /already exists/i.test(e.message)) {
             console.debug(`Folder already exists (race): ${dirPath}`);

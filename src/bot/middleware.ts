@@ -29,7 +29,7 @@ export function createRestrictToAllowedUsersMiddleware(
         const chat = ctx.chat;
 
         if (!chat || !isAllowedChatType(chat.type)) {
-            console.log("Unauthorized chat type:", chat?.type, chat?.id);
+            console.debug("Unauthorized chat type:", chat?.type, chat?.id);
             return;
         }
 
@@ -46,7 +46,7 @@ export function createRestrictToAllowedUsersMiddleware(
             }
             await next();
         } else {
-            console.log(
+            console.warn(
                 `Unauthorized access attempt: User ${username || userId} tried to access the bot at ${new Date().toISOString()}`,
             );
         }

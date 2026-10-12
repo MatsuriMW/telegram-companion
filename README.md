@@ -2,13 +2,33 @@
 
 **目录**
 
+- [English](#english): what it is, installation, usage
 - 先看这里：[它能做什么](#它能做什么) · [用起来是什么样](#用起来是什么样) · [为什么做](#为什么做) · [需要什么](#需要什么) · [你发什么，它做什么](#你发什么它做什么)
 - 它怎么陪你：[两种模式](#两种模式记录和对话) · [它怎么回你](#它怎么回你) · [人设](#人设它是谁) · [口癖](#口癖你自己的说法) · [陪伴档案](#陪伴档案它对你的了解)
 - 配置和搭配：[任务怎么写](#任务怎么写) · [背后的模型](#背后的模型) · [和螺旋日程一起用](#和螺旋日程一起用效果最好) · [联网、账号和本机程序](#联网账号和本机程序)
 - 其它：[致谢与许可](#致谢与许可)
 - 第一次用：[上手指南](docs/上手指南.md)
 
-> A Telegram bot for your Obsidian vault that does two things: everything you send it lands in today's daily note, and when you want to talk, it answers as a friend who has read your recent notes. It keeps a small profile note about you that grows over time, and you choose which model sits behind it (Claude Code CLI, Anthropic API, or any OpenAI-compatible endpoint). The interface and replies are in Chinese by default; the reply language is a setting.
+## English
+
+A Telegram bot for your Obsidian vault that does two things: everything you send it lands in today's daily note, and when you want to talk, it answers as a friend who has read your recent notes. It keeps a small profile note about you that grows over time, and you choose which model sits behind it (Claude Code CLI, Anthropic API, or any OpenAI-compatible endpoint, including a local Ollama). The settings and the bot's replies are in Chinese by default; the reply language is a setting. The rest of this README is in Chinese.
+
+### Installation
+
+Desktop only. The bot runs inside Obsidian on your computer, so Obsidian has to be open for it to answer.
+
+- From the community plugin directory: **Settings → Community plugins → Browse**, search for "Telegram Companion", then install and enable it.
+- Manually: download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/MatsuriMW/telegram-companion/releases/latest) into `<your vault>/.obsidian/plugins/telegram-companion/`, then enable the plugin under **Settings → Community plugins**.
+
+### Usage
+
+1. In Telegram, message `@BotFather`, send `/newbot` and copy the token it gives you.
+2. Open the plugin settings. Paste the token into **Bot token**, and put your Telegram username (without `@`) or numeric ID into the allowlist field (labelled 白名单). Only people on that list are answered. The status at the top right shows the bot's name once it is connected.
+3. Send the bot any text, photo or link. It is written into today's daily note, in the folder and date format set by the Daily notes core plugin (or Periodic Notes).
+4. For the companion part, pick a model backend in the section labelled 背后的模型: Claude Code CLI (uses your local `claude` login, no key), Anthropic API (key and model name), or an OpenAI-compatible endpoint (URL, key and model name). The test button in that section confirms the connection.
+5. Send `/chat` to start talking and `/record` to go back to capturing. `/help` lists every command.
+
+What is sent where: Telegram messages go through the Telegram Bot API. When the bot replies, your profile note, the persona note and a digest of the last week of daily notes are sent to the model service you chose, and to no one else. There is no telemetry. Details are in the section "联网、账号和本机程序" below.
 
 社区插件 [Telegram Inbox](https://github.com/icealtria/obsidian-telegram-inbox) 的改版。原版做一件事：发给自己的 Telegram 机器人的消息，自动记进 Obsidian 今天的日记。
 

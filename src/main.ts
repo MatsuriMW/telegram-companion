@@ -27,7 +27,7 @@ export default class TGInbox extends Plugin {
 
         if (this.settings.disable_auto_reception) {
             this.addRibbonIcon("send", "Telegram Companion：收一次消息", () => {
-                this.bot?.getUpdates();
+                void this.bot?.getUpdates();
             });
         }
 
@@ -40,10 +40,10 @@ export default class TGInbox extends Plugin {
         this.app.workspace.onLayoutReady(() => {
             if (this.settings.run_after_sync) {
                 runAfterSync.call(this, () => {
-                    this.initBot();
+                    void this.initBot();
                 });
             } else {
-                this.initBot();
+                void this.initBot();
             }
         });
     }
@@ -113,13 +113,16 @@ export default class TGInbox extends Plugin {
         return null;
     }
 
-    async onunload() {
-        this.stopBot();
-        console.log("telegram companion unloaded");
+    onunload() {
+        void this.stopBot();
     }
 
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        this.settings = Object.assign(
+            {},
+            DEFAULT_SETTINGS,
+            (await this.loadData()) as Partial<TGInboxSettings>,
+        );
     }
 
     async saveSettings() {
@@ -144,7 +147,7 @@ export default class TGInbox extends Plugin {
         }
     }
 
-    async startBot() {
+    startBot() {
         new Notice("Telegram 机器人启动中");
         if (this.bot) {
             this.bot.start();
@@ -155,7 +158,6 @@ export default class TGInbox extends Plugin {
         try {
             if (this.bot) {
                 await this.bot.bot.stop();
-                console.log("bot stopped");
                 new Notice("Telegram 机器人已停止");
             }
         } catch (error) {

@@ -1,14 +1,11 @@
 import { moment, type App, type TFile, type Vault } from "obsidian";
-import { spiralPlugin, zonesCore } from "../integrations";
+import { spiralPlugin, zonesCore, type SpiralItem, type ZonesCore } from "../integrations";
 
 // Optional integration with two other plugins by the same author:
 //   done-to-top     keeps DONE / DOING / TODO zones at the top of the daily note
 //   nautilus-spiral draws Logseq-style tasks ("- DONE 16:00 写稿 2h") as a schedule
 // With them installed, a message such as "done 写稿 2h" updates the matching task
 // in today's note instead of adding a new line. Without them everything here is a no-op.
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Core = any;
 
 const LIST = String.raw`(?:[-*+]|\d+[.)])`;
 const SEP_RE = /^[-*+]\s+-{3,}\s*$/;
@@ -41,11 +38,12 @@ function finishExisting(
     data: string,
     doneLine: string,
     hm: string,
-    zones: Core,
+    zones: ZonesCore,
 ): string | null {
     const spiral = spiralPlugin(app);
-    const sp: Core = spiral?.core;
-    if (!sp || !sp.stripDuration) return null;
+    const sp = spiral?.core;
+    // Older nautilus-spiral builds have no stripDuration; leave the note alone there.
+    if (!spiral || !sp || typeof sp.stripDuration !== "function") return null;
     const cfg = spiral.settings;
     const body = doneLine.replace(new RegExp(`^${LIST}\\s+DONE\\s*`), "");
     const tm = body.match(/^(\d{1,2}[:：]\d{2}(?:\s*[-–~～]\s*\d{1,2}[:：]\d{2})?)\s*/); // 消息里自己写的时间 / 时段
@@ -54,7 +52,7 @@ function finishExisting(
     const want = msgItem ? norm(msgItem.label) : "";
     if (!want || /^\d{1,2}[:：]\d{2}/.test(want)) return null;
     const lines = data.split("\n");
-    let best: { t: Core; n: number; have: string } | null = null;
+    let best: { t: SpiralItem; n: number; have: string } | null = null;
     for (const t of sp.parseJournal(data, cfg)) {
         if (t.kind !== "task" || t.state !== "open") continue;
         const have = norm(t.label);
@@ -66,7 +64,7 @@ function finishExisting(
             best = { t, n, have };
     }
     if (!best) return null;
-    const at: number = best.t.line;
+    const at = best.t.line;
     const old = lines[at];
     const m = old.match(
         new RegExp(
@@ -74,7 +72,7 @@ function finishExisting(
         ),
     );
     if (!m) return null;
-    let rest: string = sp.stripProgress(m[5]).replace(/\s+/g, " ").trim(); // 做完了，40% 这种进度不留
+    let rest = sp.stripProgress(m[5]).replace(/\s+/g, " ").trim(); // 做完了，40% 这种进度不留
     if (m[4]) {
         lines[at] = `${m[1]}${m[2] || ""}[x] ${rest}`;
     } else {
@@ -83,7 +81,7 @@ function finishExisting(
             : null; // DOING 14:05 记的开始时间
         if (st) rest = rest.slice(st[0].length);
         const said = (tm ? body.slice(tm[0].length) : body).trim();
-        const dur: number | null = sp.parseDuration(said);
+        const dur = sp.parseDuration(said);
         const durText =
             dur == null
                 ? ""

@@ -65,11 +65,10 @@ export async function callModel(
                 max_tokens: 4096,
                 messages: [{ role: "user", content: prompt }],
             },
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (d: any) =>
+            (d: AnthropicReply) =>
                 (d.content || [])
-                    .filter((x: { type: string }) => x.type === "text")
-                    .map((x: { text: string }) => x.text)
+                    .filter((x) => x.type === "text")
+                    .map((x) => x.text ?? "")
                     .join(""),
             timeoutSec,
         );
@@ -80,20 +79,33 @@ export async function callModel(
             c.openaiBase.replace(/\/+$/, "") + "/chat/completions",
             c.openaiKey ? { Authorization: `Bearer ${c.openaiKey}` } : {},
             { model: c.openaiModel, messages: [{ role: "user", content: prompt }] },
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (d: any) => d.choices?.[0]?.message?.content ?? "",
+            (d: OpenAiReply) => d.choices?.[0]?.message?.content ?? "",
             timeoutSec,
         );
     }
     return callCli(c, prompt, timeoutSec);
 }
 
-async function callHttp(
+// The parts of each provider's reply that are read here.
+interface ApiError {
+    error?: { message?: string } | string;
+}
+interface AnthropicReply extends ApiError {
+    content?: { type: string; text?: string }[];
+}
+interface OpenAiReply extends ApiError {
+    choices?: { message?: { content?: string } }[];
+}
+interface CliReply {
+    is_error?: boolean;
+    result?: string;
+}
+
+async function callHttp<T extends ApiError>(
     url: string,
     headers: Record<string, string>,
     body: unknown,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    pick: (d: any) => string,
+    pick: (d: T) => string,
     timeoutSec: number,
 ): Promise<string> {
     const req = requestUrl({
@@ -110,16 +122,16 @@ async function callHttp(
             window.setTimeout(() => rej(new Error("模型超时")), timeoutSec * 1000),
         ),
     ]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let d: any = null;
+    let d: T | null = null;
     try {
-        d = res.json;
+        d = res.json as T;
     } catch {
         /* 不是 JSON */
     }
     if (res.status >= 400) {
-        const why = (d && d.error && (d.error.message || d.error)) || res.text || "";
-        throw new Error(`模型接口 ${res.status}：${String(why).slice(0, 200)}`);
+        const e = d?.error;
+        const why = (typeof e === "string" ? e : e?.message) || res.text || "";
+        throw new Error(`模型接口 ${res.status}：${why.slice(0, 200)}`);
     }
     const text = String((d && pick(d)) || "").trim();
     if (!text) throw new Error("模型没有返回内容");
@@ -132,12 +144,11 @@ function callCli(c: CompanionSettings, prompt: string, timeoutSec: number): Prom
     }
     // Node 模块只在桌面端有，用到时再取。这里必须拿真正的进程环境：
     // 打包进来的 grammy 网页版自带一个 process 替身，里面没有 HOME，命令行就找不到自己的登录。
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const req = (window as any).require as (id: string) => any;
-    const { spawn } = req("child_process");
-    const os = req("os");
-    const path = req("path");
-    const penv = req("process").env as Record<string, string | undefined>;
+    const req = (window as unknown as { require: NodeJS.Require }).require;
+    const { spawn } = req("child_process") as typeof import("child_process");
+    const os = req("os") as typeof import("os");
+    const path = req("path") as typeof import("path");
+    const penv = (req("process") as typeof import("process")).env;
     return new Promise((resolve, reject) => {
         const bin = (c.cliPath || "claude").replace(/^~(?=\/)/, os.homedir());
         const env = {
@@ -161,17 +172,16 @@ function callCli(c: CompanionSettings, prompt: string, timeoutSec: number): Prom
             "",
         ];
         if (c.cliModel) args.push("--model", c.cliModel);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let child: any;
+        let child: ReturnType<typeof spawn>;
         try {
             child = spawn(bin, args, { cwd: os.tmpdir(), env });
         } catch (e) {
-            return reject(e);
+            return reject(e instanceof Error ? e : new Error(String(e)));
         }
         let out = "";
         let err = "";
-        child.stdout.on("data", (d: unknown) => (out += d));
-        child.stderr.on("data", (d: unknown) => (err += d));
+        child.stdout?.on("data", (d: Buffer) => (out += d.toString()));
+        child.stderr?.on("data", (d: Buffer) => (err += d.toString()));
         const timer = window.setTimeout(() => {
             child.kill();
             reject(new Error("claude 超时"));
@@ -180,12 +190,11 @@ function callCli(c: CompanionSettings, prompt: string, timeoutSec: number): Prom
             window.clearTimeout(timer);
             reject(e);
         });
-        child.on("close", (code: number) => {
+        child.on("close", (code: number | null) => {
             window.clearTimeout(timer);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            let d: any;
+            let d: CliReply;
             try {
-                d = JSON.parse(out);
+                d = JSON.parse(out) as CliReply;
             } catch {
                 return reject(
                     new Error((err || out || `claude 退出码 ${code}`).trim().slice(0, 300)),
@@ -195,7 +204,7 @@ function callCli(c: CompanionSettings, prompt: string, timeoutSec: number): Prom
                 return reject(new Error(String(d.result || "claude 出错").slice(0, 300)));
             resolve(String(d.result || "").trim());
         });
-        child.stdin.write(prompt);
-        child.stdin.end();
+        child.stdin?.write(prompt);
+        child.stdin?.end();
     });
 }
