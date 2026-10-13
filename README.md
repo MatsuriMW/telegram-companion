@@ -55,7 +55,7 @@ Chat mode starts when you send `/chat`, when you send an emotional message, when
 
 | You send | It does | Saved to the daily note |
 |---|---|---|
-| Any text, photo, link or voice message | Saves it to today's daily note, timed by when the message was sent | Yes |
+| Any text, photo, link or voice message | Saves it to today's daily note, timed by when the message was sent. With list mode on, each line becomes a list item; lines that already are list items (`•`, `1、`, `①` and the like) keep their own marker and indentation. Optionally the first line gets the time it arrived, and forwarded messages get a tag | Yes |
 | `/chat`, `/record` | Enters or leaves chat mode | No |
 | `/summary` | Summarises today without ending the day | No |
 | `/mode` | Says which mode it is in | No |
