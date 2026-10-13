@@ -22,6 +22,10 @@ export interface TGInboxSettings {
     action_after_reception: ActionAfterReception;
     /** Turn every top-level line of a message into a list item ("- "). */
     as_list_items: boolean;
+    /** Put the time a message arrived in front of its first line ("**14:05** text"). */
+    stamp_time: boolean;
+    /** Appended to the first line of a forwarded message (e.g. "#quote"); empty = off. */
+    forward_tag: string;
     /** The owner's private chat id, recorded on their first message so the bot can message them first. */
     owner_chat_id?: number;
     companion: CompanionSettings;
@@ -46,5 +50,7 @@ export const DEFAULT_SETTINGS: TGInboxSettings = {
     target_heading: "## Inbox",
     action_after_reception: "react",
     as_list_items: false,
+    stamp_time: false,
+    forward_tag: "",
     companion: COMPANION_DEFAULTS,
 };

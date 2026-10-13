@@ -343,11 +343,33 @@ export class TGInboxSettingTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("记成列表项")
             .setDesc(
-                "消息里每一行顶格的文字都变成一个列表项（前面加「- 」），图片挂在配文下面。日记是大纲式写法的话打开",
+                "消息里每一行顶格的文字都变成一个列表项（前面加「- 」），图片挂在配文下面。本来就是列表的行（•、·、1、、① 这类写法也算）沿用它自己的标志和缩进层级，不再多加一层。日记是大纲式写法的话打开",
             )
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.as_list_items).onChange(async (value) => {
                     this.plugin.settings.as_list_items = value;
+                    await this.plugin.saveSettings();
+                }),
+            );
+
+        new Setting(containerEl)
+            .setName("记下收到的时刻")
+            .setDesc(
+                "每条消息的第一行前面加上收到的时刻（**14:05**）。todo / doing / done 这类任务行不加，它们有自己的时间；已经以时间开头的也不加",
+            )
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.stamp_time).onChange(async (value) => {
+                    this.plugin.settings.stamp_time = value;
+                    await this.plugin.saveSettings();
+                }),
+            );
+
+        new Setting(containerEl)
+            .setName("转发来的消息挂一个标签")
+            .setDesc("转发的消息是别人的话：在它第一行末尾挂上这个标签（比如 #摘录），留空就不挂")
+            .addText((text) =>
+                text.setValue(this.plugin.settings.forward_tag).onChange(async (value) => {
+                    this.plugin.settings.forward_tag = value.trim();
                     await this.plugin.saveSettings();
                 }),
             );
