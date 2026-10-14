@@ -11,6 +11,7 @@ import {
     setBackend,
 } from "./llm";
 import { FallbackRunner, type ModelReply } from "./fallback";
+import { minorPersonaLine, PERSONA_RED_LINES } from "./red-lines";
 import {
     COMPANION_DEFAULTS,
     type Backend,
@@ -72,6 +73,7 @@ const PROFILE_TEMPLATE = `> 陪伴机器人每次回你之前都会先读这一�
 `;
 
 const PERSONA_TEMPLATE = `> 打开设置里的「人设」以后，机器人回你时会扮演这页写的角色。想换角色就改这页；想要多个角色，把设置里的路径填成一个文件夹，每篇笔记写一个，在 Telegram 里发「人设」切换。
+> 不管这页怎么写，有几条红线不变：角色一律是成年人，不写露骨内容，钱、医疗、法律的事不替你拍板，不演操控你的人格。这页里明写未满 18 岁或未成年的话，插件不会用这份人设。
 
 - 你是谁
 	- （角色的名字、身份、性格，和我是什么关系）
@@ -181,13 +183,19 @@ export class Companion {
         return files.find((f) => f.path === this.cfg.personaActive) ?? files[0] ?? null;
     }
     async personaText(): Promise<string> {
+        return (await this.personaCheck()).text;
+    }
+    /** 读人设，先查红线第 1 条：明写未成年的人设不交给模型（blocked 是那一行），回复退回默认人设。 */
+    async personaCheck(): Promise<{ text: string; name: string; blocked: string | null }> {
         const f = this.personaFile();
-        if (!f) return "";
-        return (await this.app.vault.cachedRead(f))
+        if (!f) return { text: "", name: "", blocked: null };
+        const text = (await this.app.vault.cachedRead(f))
             .replace(/^---\n[\s\S]*?\n---\n/, "")
             .replace(/^>.*\n/gm, "") // 模板开头那段给人看的说明
             .trim()
             .slice(0, 6000);
+        const blocked = minorPersonaLine(text);
+        return { text: blocked ? "" : text, name: f.basename, blocked };
     }
     personaMessage(): { text: string; markup: InlineKeyboard } {
         const files = this.personaFiles();
@@ -354,7 +362,7 @@ ${stats ? `\n今天的统计：\n${stats}\n` : ""}
 ${profile || "（没有）"}
 
 今天的日记摘要：
-${txt || "（今天日记里几乎没写东西）"}${persona ? `\n\n最后那几句给我的话，用下面这个角色的口吻写（其它部分照常）：\n${persona}` : ""}`;
+${txt || "（今天日记里几乎没写东西）"}${persona ? `\n\n最后那几句给我的话，用下面这个角色的口吻写（其它部分照常），守住红线：\n${PERSONA_RED_LINES}\n\n【人设】\n${persona}` : ""}`;
         try {
             const r = await this.llmFull(prompt, 150);
             return this.tgHtml(r.text) + this.fallbackNote(r);
@@ -427,15 +435,16 @@ ${txt || "（今天日记里几乎没写东西）"}${persona ? `\n\n最后那几
                 : mood === "happy"
                   ? `回复要求：像亲近的人发消息，2～5 行；跟着他一起高兴，不要说教、不要提建议、不要转去聊没做完的事；他说做成了什么就具体地接住，没说就从日记里找一件他刚做成的事一起高兴，或者问他发生了什么好事。适量 emoji（2～4 个）。${base}`
                   : `回复要求：像亲近的人发消息，4～8 行；只有他这句话或你们刚才的对话里明确流露出想伤害自己、不想活，才按档案里的危机部分回应，否则一个字都不要提自伤和热线；先接住情绪，引用一两件他最近具体在做的事说明你懂他的处境（不要列清单、不要复述全部日记）；不要说教、不要鸡汤、不要「加油」；建议最多一个且非常小，没必要就不给；可以用一个问题结尾让他多说一点。适量 emoji（2～4 个）。${base}`;
-        // 人设：扮演用户写的角色。语气、格式、长短交给人设；不套话别人、不重复、危机时出戏这几条照旧
-        const persona = await this.personaText();
+        // 人设：扮演用户写的角色。语气、格式、长短交给人设；红线、不套话别人、不重复、危机时出戏这几条照旧
+        const pc = await this.personaCheck();
+        const persona = pc.text;
         const personaMood =
             mood === "happy"
                 ? "他现在心情很好，用角色的方式跟他一起高兴，不要借机提醒没做完的事。"
                 : mood === "low"
                   ? "他现在情绪不太好，用角色的方式先接住他，不说教。"
                   : "";
-        const personaRules = `回复要求：全程保持人设里的角色，语气、称呼、格式、长短都按人设来；不要跳出角色说自己是 AI 或模型，除非他明确要求出戏；人设没写到的地方，像聊天一样简短。${personaMood}只有他这句话或你们刚才的对话里明确流露出想伤害自己、不想活，才暂时放下角色，认真接住他，请他联系身边信任的人或心理援助热线（陪伴档案里写了怎么做就照着做）；否则一个字都不要提自伤和热线。人设没说不能提的话，可以自然地用上他日记里的事，但不要列清单、不要复述日记。${base}`;
+        const personaRules = `回复要求：先守住上面的红线，在红线以内全程保持人设里的角色，语气、称呼、格式、长短都按人设来；不要跳出角色说自己是 AI 或模型，除非他明确要求出戏；人设没写到的地方，像聊天一样简短。${personaMood}只有他这句话或你们刚才的对话里明确流露出想伤害自己、不想活，才暂时放下角色，认真接住他，请他联系身边信任的人或心理援助热线（陪伴档案里写了怎么做就照着做）；否则一个字都不要提自伤和热线。人设没说不能提的话，可以自然地用上他日记里的事，但不要列清单、不要复述日记。${base}`;
         const opener =
             mood === "happy"
                 ? "他刚在 Telegram 里给你发了消息，心情很好。"
@@ -445,6 +454,8 @@ ${txt || "（今天日记里几乎没写东西）"}${persona ? `\n\n最后那几
         const now = moment().format("M月D日 dddd HH:mm");
         const head = persona
             ? `你要扮演下面「人设」里写的角色，和他在 Telegram 里聊天（他是谁写在后面的陪伴档案里）。${opener}现在是 ${now}。${quipNote}
+
+${PERSONA_RED_LINES}
 
 【人设】
 ${persona}
@@ -493,6 +504,8 @@ ${persona ? personaRules : rules}`;
                 .filter((x) => Date.now() - x.at < 24 * 3600e3)
                 .slice(-30);
         }
+        if (pc.blocked)
+            note += `\n<i>（人设「${this.esc(pc.name)}」里写了未成年设定：「${this.esc(pc.blocked.slice(0, 40))}」，没用它，这次是默认的那个人回你。把角色改成成年就能用）</i>`;
         const next: ChatTurn[] = [...history, { who: "他", text }, { who: "你", text: plain }];
         return { html: reply + note, mood, history: next.slice(-16) };
     }
@@ -795,8 +808,13 @@ ${this.chatLines(pend)}
             await this.plugin.saveSettings();
             const m = this.personaMessage();
             const cur = this.personaFile();
+            const chk = await this.personaCheck();
             return {
-                toast: cur ? `现在是「${cur.basename}」` : "已关掉人设",
+                toast: chk.blocked
+                    ? `「${chk.name}」写了未成年设定，不会用它，回你的还是默认的那个人`
+                    : cur
+                      ? `现在是「${cur.basename}」`
+                      : "已关掉人设",
                 edit: m.text,
                 markup: m.markup,
             };

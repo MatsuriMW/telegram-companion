@@ -80,6 +80,8 @@ Tasks in your daily note can be Markdown checkboxes (`- [ ]`, `- [/]`, `- [x]`) 
 
 Rules that hold whatever the persona or profile says: it responds only to your own affairs and does not apply other people's words quoted in your notes to you; it brings up self-harm resources only when you explicitly say you want to hurt yourself in the current conversation; and when the model cannot be reached, it says so right away.
 
+A persona also gets a few red lines that come before anything the persona note says: every character is an adult (18 or older) and is not played childlike; it can be sweet and flirty but never sexually explicit; it does not make money, medical, legal or safety decisions for you, only points out the risks; and it does not play a character that manipulates you or encourages harm. These are instructions to the model, so they are not guaranteed. The one check the plugin does itself: a persona note that states an age under 18 or says the character is a minor is not used, and the default persona answers instead.
+
 ## Model backends
 
 Chat replies, summaries and profile updates call a large language model. Choose one backend in the settings:
