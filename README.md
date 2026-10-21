@@ -23,11 +23,15 @@ The settings and the bot's built-in messages are in Chinese. The language of the
 ## Screenshots
 
 <p>
-  <img src="docs/images/chat.jpg" width="340" alt="Chat mode: asked for praise, it praises the things recorded in that day's daily note">
-  <img src="docs/images/spiral.jpg" width="340" alt="Scheduled push: today's spiral schedule and what to do next">
+  <img src="docs/images/chat-en.jpg" width="340" alt="Chat mode: asked for praise, it praises the things recorded in that day's daily note">
+  <img src="docs/images/spiral-en.jpg" width="340" alt="Scheduled push: today's spiral schedule and what to do next">
 </p>
 
-Left: chat mode. Right: used together with [Nautilus Spiral](https://github.com/MatsuriMW/nautilus-spiral), it sends today's schedule to your phone.
+**Left: chat mode.** The message was "Praise me! Look how much I got done today, and I sprained my ankle." Everything it praises is in that day's daily note: finishing the backlinks panel and shipping it at 4 a.m., working on a résumé, updating a skill, an hour of ball. It got the order of the sprain and the research backwards, corrected itself when told, and asked whether it still hurts to stand on.
+
+**Right: used together with [Nautilus Spiral](https://github.com/MatsuriMW/nautilus-spiral).** At a few fixed times a day it sends today's spiral to your phone: how much of the day is gone, how much time is left, whether the to-dos still fit, and what to do next.
+
+Both are real conversations from the author's own use, originally in Chinese and translated here ([original screenshots](README.zh-CN.md#用起来是什么样)). In chat mode the bot replies in whatever language you write in; the Nautilus Spiral push is currently in Chinese only.
 
 ## Installation
 
