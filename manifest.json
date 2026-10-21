@@ -1,7 +1,7 @@
 {
 	"id": "telegram-companion",
 	"name": "Telegram Companion",
-	"version": "1.0.6",
+	"version": "1.1.0",
 	"minAppVersion": "1.5.11",
 	"description": "Capture Telegram messages into your daily note, and chat with a bot that has read your recent notes. It keeps a profile note about you and works with the model you choose.",
 	"author": "MatsuriMW",
