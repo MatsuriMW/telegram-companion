@@ -8,6 +8,11 @@ export interface TGInboxSettings {
     allow_users: string[];
     download_dir: string;
     download_media: boolean;
+    /**
+     * How wide an embedded image is shown, as a percentage of the width it would
+     * take up on its own. 100 leaves the embed without a width.
+     */
+    image_scale: number;
     message_template: string;
     markdown_escaper: boolean;
     is_custom_file: boolean;
@@ -37,6 +42,7 @@ export const DEFAULT_SETTINGS: TGInboxSettings = {
     allow_users: [],
     download_dir: "/assets",
     download_media: false,
+    image_scale: 100,
     markdown_escaper: false,
     message_template: "{{{text}}}",
     is_custom_file: false,

@@ -109,6 +109,21 @@ export class TGInboxSettingTab extends PluginSettingTab {
                     }),
             );
 
+        new Setting(downloadDirContainer)
+            .setName("图片显示宽度")
+            .setDesc(
+                "嵌进日记的图片显示成原来的百分之几。100 = 不限制；50 = 原来的一半（按图片自己的宽度算，超过正文宽度的按正文宽度算）。只管新收到的图片",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(10, 100, 10)
+                    .setValue(this.plugin.settings.image_scale)
+                    .onChange(async (value) => {
+                        this.plugin.settings.image_scale = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
         const message_template_desc = createFragment((frag) => {
             frag.append("每条消息记成什么样。");
             frag.createEl("a", {
@@ -343,7 +358,7 @@ export class TGInboxSettingTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("记成列表项")
             .setDesc(
-                "消息里每一行顶格的文字都变成一个列表项（前面加「- 」），图片挂在配文下面。本来就是列表的行（•、·、1、、① 这类写法也算）沿用它自己的标志和缩进层级，不再多加一层。日记是大纲式写法的话打开",
+                "消息里每一行顶格的文字都变成一个列表项（前面加「- 」），图片挂在配文下面。本来就是列表的行（•、·、1、、① 这类写法也算）沿用它自己的标志和缩进层级，不再多加一层。转发来的文章里有「# 标题」的话，标题变成一个列表项，下面的内容都缩进一格挂在它下面（## 再往里挂一层）。日记是大纲式写法的话打开",
             )
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.as_list_items).onChange(async (value) => {

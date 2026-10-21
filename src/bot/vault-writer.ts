@@ -58,6 +58,9 @@ function asListItem(body: string, dashBullets: boolean): string | null {
 
 const indentWidth = (indent: string) => [...indent].reduce((w, c) => w + (c === "\t" ? 4 : 1), 0);
 
+// "## Title" (closing hashes allowed); "#tag" has no space and stays a tag.
+const HEADING = /^(#{1,6})\s+(.*?)(?:\s+#+)?\s*$/;
+
 /**
  * Turns every top-level line into a list item and drops blank lines. A line that
  * already is a list item keeps its own marker instead of getting a second one:
@@ -65,32 +68,50 @@ const indentWidth = (indent: string) => [...indent].reduce((w, c) => w + (c === 
  * Indented list items keep their depth, written with tabs; other indented lines stay
  * as text under the item they belong to. A top-level code block becomes one item with
  * its body indented; an indented code block hangs under the item before it.
+ * A heading ("# Title") becomes an item and everything after it hangs one level under
+ * it, until a heading of the same or a higher level; "##" under "#" nests a level deeper.
  */
 export function toListItems(content: string): string {
     const lines = String(content).split("\n");
     const dashBullets = lines.filter((l) => DASH_BULLET.test(l.trimStart())).length > 1;
     const out: string[] = [];
+    // Levels of the headings the current line sits under, outermost first.
+    const headings: number[] = [];
+    const base = () => "\t".repeat(headings.length);
     // Indent widths of the items the current line can sit under, outermost first.
     const open: number[] = [];
     let inFence = false;
     for (const line of lines) {
         const fence = /^\s*(```|~~~)/.test(line);
-        if (inFence || (fence && out.length && !/^(```|~~~)/.test(line))) {
-            out.push("\t" + line);
+        if (inFence || (fence && open.length && !/^(```|~~~)/.test(line))) {
+            out.push(base() + "\t" + line);
             if (fence) inFence = !inFence;
             continue;
         }
         if (fence) {
-            out.push("- " + line);
+            out.push(base() + "- " + line.trimStart());
+            open.length = 0;
+            open.push(0);
             inFence = true;
             continue;
         }
         if (line.trim() === "") continue;
-        const indent = line.match(/^\s*/)?.[0] ?? "";
+        let indent = line.match(/^\s*/)?.[0] ?? "";
         const body = line.slice(indent.length);
+        const heading = !indent ? body.match(HEADING) : null;
+        if (heading?.[2]) {
+            const level = heading[1].length;
+            while (headings.length && headings[headings.length - 1] >= level) headings.pop();
+            out.push(base() + "- " + heading[2]);
+            headings.push(level);
+            open.length = 0;
+            continue;
+        }
+        // Indented text right under a heading starts the heading's own items.
+        if (indent && !open.length && headings.length) indent = "";
         const item = asListItem(body, dashBullets);
         if (!indent) {
-            out.push(item ?? "- " + body);
+            out.push(base() + (item ?? "- " + body));
             open.length = 0;
             open.push(0);
             continue;
@@ -101,11 +122,11 @@ export function toListItems(content: string): string {
         }
         const width = indentWidth(indent);
         if (!item) {
-            out.push("\t".repeat(open.filter((w) => w < width).length) + body);
+            out.push(base() + "\t".repeat(open.filter((w) => w < width).length) + body);
             continue;
         }
         while (open[open.length - 1] >= width) open.pop();
-        out.push("\t".repeat(open.length) + item);
+        out.push(base() + "\t".repeat(open.length) + item);
         open.push(width);
     }
     return out.join("\n");

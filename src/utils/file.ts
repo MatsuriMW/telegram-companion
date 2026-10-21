@@ -13,6 +13,26 @@ export function getExt(path: string): string | undefined {
     return path.split(".").pop();
 }
 
+/** The widest an image is normally shown in a note: Obsidian's readable line width. */
+const LINE_WIDTH = 700;
+const IMAGE_EXT = /\.(?:jpe?g|png|gif|webp|bmp|avif|heic)$/i;
+
+/**
+ * The embed for a downloaded file. Images can be shown smaller than they would
+ * appear on their own: `scale` is a percentage of the width the picture takes up
+ * by itself (its pixel width, capped at the line width). Anything from 100 up,
+ * and every file that is not an image, gets a plain embed.
+ */
+export function mediaEmbed(filename: string, msg: MessageUpdate, scale: number): string {
+    if (!IMAGE_EXT.test(filename) || !(scale > 0 && scale < 100)) {
+        return `![[${filename}]]`;
+    }
+    // A picture sent as a file does not say how wide it is; assume it fills the line.
+    const natural = msg.photo?.[msg.photo.length - 1]?.width ?? LINE_WIDTH;
+    const width = Math.max(40, Math.round((Math.min(natural, LINE_WIDTH) * scale) / 100));
+    return `![[${filename}|${width}]]`;
+}
+
 export function getFileUrl(file: File, token: string): string {
     return `${TG_API_FILE_URL}${token}/${file.file_path}`;
 }

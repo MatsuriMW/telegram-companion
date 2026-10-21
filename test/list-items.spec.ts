@@ -59,6 +59,28 @@ describe("toListItems", () => {
     it("hangs an indented code block under the previous item", () => {
         assert.equal(toListItems("note\n  ```\n  x\n  ```"), "- note\n\t  ```\n\t  x\n\t  ```");
     });
+
+    it("makes a heading the parent item of everything after it", () => {
+        assert.equal(
+            toListItems("# 标题\n\n第一段\n\n- 要点\n  - 细节\n1. 一"),
+            "- 标题\n\t- 第一段\n\t- 要点\n\t\t- 细节\n\t1. 一",
+        );
+    });
+
+    it("nests lower headings and closes them at the same or a higher level", () => {
+        assert.equal(
+            toListItems("导语\n# A\na\n## A1\na1\n### A1x ###\nx\n## A2\na2\n# B\nb"),
+            "- 导语\n- A\n\t- a\n\t- A1\n\t\t- a1\n\t\t- A1x\n\t\t\t- x\n\t- A2\n\t\t- a2\n- B\n\t- b",
+        );
+    });
+
+    it("leaves hashtags and hashes inside code blocks alone", () => {
+        assert.equal(toListItems("#quote 一句话"), "- #quote 一句话");
+        assert.equal(
+            toListItems("## 代码\n```sh\n# comment\n```\n后文"),
+            "- 代码\n\t- ```sh\n\t\t# comment\n\t\t```\n\t- 后文",
+        );
+    });
 });
 
 describe("stripCopyHeaders", () => {

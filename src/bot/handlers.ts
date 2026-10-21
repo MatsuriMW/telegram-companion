@@ -3,7 +3,7 @@ import { type Bot, type Context } from "grammy";
 import type { TGInboxSettings } from "../settings/types";
 import { generateContentFromTemplate } from "../utils/template";
 import { downloadAndSaveFile } from "../utils/download";
-import { getFileUrl } from "../utils/file";
+import { getFileUrl, mediaEmbed as embedFor } from "../utils/file";
 import type { VaultWriter } from "./vault-writer";
 import { generateFilename } from "./utils";
 import type { MessageUpdate } from "../type";
@@ -473,7 +473,7 @@ export function setupMessageHandlers(
             );
 
             if (downloadResult) {
-                mediaEmbed = `![[${filename_ext}]]`;
+                mediaEmbed = embedFor(filename_ext, msg, settings.image_scale);
             } else {
                 console.error(`Failed to download media. File: ${filename_ext}, URL: ${url}`);
                 await ctx.reply(`Failed to download media. File: ${filename_ext}, URL: ${url}`);
