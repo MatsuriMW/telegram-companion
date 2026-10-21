@@ -170,6 +170,8 @@ export class VaultWriter {
         private app: App,
         private vault: Vault,
         private settings: TGInboxSettings,
+        /** Saves the settings; used once, to remember that the first message got in. */
+        private save?: () => Promise<void>,
     ) {}
 
     getVault(): Vault {
@@ -212,6 +214,10 @@ export class VaultWriter {
             await insertMessageAtTop(this.vault, content, savedPath);
         } else {
             await insertMessage(this.vault, content, savedPath);
+        }
+        if (!this.settings.first_message_saved) {
+            this.settings.first_message_saved = true;
+            await this.save?.();
         }
     }
 }

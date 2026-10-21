@@ -4,10 +4,14 @@ import * as Mustache from "mustache";
 import { ActionAfterReception } from "./settings/types";
 import { getSyncStatus, hasSyncPlugin } from "./utils/sync";
 import { renderCompanionSettings } from "./companion/settings-ui";
+import { renderSetupChecklist } from "./setup-checklist";
+import { tr } from "./i18n";
 
 export class TGInboxSettingTab extends PluginSettingTab {
     plugin: TGInbox;
     statusEl: HTMLDivElement;
+    setupEl: HTMLDivElement;
+    private botName: string | null = null;
     updateId: number;
     // Owns the Markdown rendered inside the tab; unloaded each time the tab closes or redraws.
     private rendered = new Component();
@@ -29,11 +33,16 @@ export class TGInboxSettingTab extends PluginSettingTab {
             cls: "bot-settings-title",
         });
 
-        new Setting(botSettingsTitle).setName("机器人").setHeading();
+        new Setting(botSettingsTitle).setName(tr("机器人", "Bot")).setHeading();
 
         this.statusEl = botSettingsTitle.createDiv({
             cls: "tg-inbox-status",
         });
+
+        // The setup checklist goes above everything else.
+        this.setupEl = createDiv();
+        containerEl.insertBefore(this.setupEl, botSettingsTitle);
+        this.drawSetup();
 
         void this.updateStatus();
 
@@ -61,9 +70,12 @@ export class TGInboxSettingTab extends PluginSettingTab {
             });
 
         new Setting(containerEl)
-            .setName("白名单")
+            .setName(tr("白名单", "Allowlist"))
             .setDesc(
-                "只处理这些人发来的消息。填 Telegram 用户名（不带 @）或数字 ID，多个用逗号隔开",
+                tr(
+                    "只处理这些人发来的消息。填 Telegram 用户名（不带 @）或数字 ID，多个用逗号隔开。空着的时候，用上面清单里的配对码就能把自己加进来",
+                    "Only messages from these accounts are handled: Telegram usernames (without @) or numeric IDs, separated by commas. While it is empty, the pairing code in the checklist above adds you",
+                ),
             )
             .addText((text) =>
                 text
@@ -74,7 +86,14 @@ export class TGInboxSettingTab extends PluginSettingTab {
                             .split(",")
                             .map((s) => s.trim())
                             .filter(Boolean);
+                        if (
+                            this.plugin.settings.allow_users.length === 0 &&
+                            !this.plugin.pairing.code
+                        ) {
+                            this.plugin.pairing.renew();
+                        }
                         await this.plugin.saveSettings();
+                        this.drawSetup();
                     }),
             );
 
@@ -407,14 +426,21 @@ export class TGInboxSettingTab extends PluginSettingTab {
     async updateStatus() {
         try {
             const me = await this.plugin.getBotInfo();
-            if (me) {
-                this.statusEl.setText(`✅ 已连接 @${me.username}`);
-            } else {
-                this.statusEl.setText("❌ 没连上");
-            }
+            this.botName = me?.username ?? null;
         } catch {
-            this.statusEl.setText("❌ 没连上");
+            this.botName = null;
         }
+        this.statusEl.setText(
+            this.botName
+                ? tr(`✅ 已连接 @${this.botName}`, `✅ Connected @${this.botName}`)
+                : tr("❌ 没连上", "❌ Not connected"),
+        );
+        this.drawSetup();
+    }
+
+    private drawSetup() {
+        if (this.setupEl)
+            renderSetupChecklist(this.setupEl, this.plugin, this.botName, () => this.drawSetup());
     }
 
     private validateAndSetTimeCutoff(value: string, inputEl: HTMLInputElement, setting: Setting) {

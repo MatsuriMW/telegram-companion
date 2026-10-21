@@ -26,7 +26,9 @@ export class TelegramBot {
     ) {
         this.vault = vault;
         this.settings = settings;
-        this.vaultWriter = new VaultWriter(plugin.app, vault, settings);
+        this.vaultWriter = new VaultWriter(plugin.app, vault, settings, () =>
+            plugin.saveSettings(),
+        );
         this.bot = new Bot(settings.token);
 
         if (settings.disable_auto_reception) {
@@ -40,8 +42,13 @@ export class TelegramBot {
 
     private setupMiddlewares(): void {
         this.bot.use(
-            createRestrictToAllowedUsersMiddleware(this.settings, () =>
-                this.plugin.companion.saveSoon(),
+            createRestrictToAllowedUsersMiddleware(
+                this.settings,
+                () => this.plugin.companion.saveSoon(),
+                {
+                    pairing: this.plugin.pairing,
+                    onPaired: () => void this.plugin.saveSettings(),
+                },
             ),
         );
         this.bot.use(

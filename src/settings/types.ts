@@ -33,6 +33,10 @@ export interface TGInboxSettings {
     forward_tag: string;
     /** The owner's private chat id, recorded on their first message so the bot can message them first. */
     owner_chat_id?: number;
+    /** A message has been written into the vault at least once (the setup checklist ticks it off). */
+    first_message_saved?: boolean;
+    /** The model test in the settings has succeeded at least once (setup checklist). */
+    model_tested?: boolean;
     companion: CompanionSettings;
 }
 

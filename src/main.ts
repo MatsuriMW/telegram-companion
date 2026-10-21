@@ -4,11 +4,14 @@ import { type TGInboxSettings, DEFAULT_SETTINGS } from "./settings/types";
 import { TGInboxSettingTab } from "./settings";
 import { runAfterSync } from "./utils/sync";
 import { Companion } from "./companion/companion";
+import { Pairing } from "./bot/pairing";
 
 export default class TGInbox extends Plugin {
     settings: TGInboxSettings;
     bot: TelegramBot | null;
     companion: Companion;
+    /** Pairing code for the first owner; only used while the allowlist is empty. */
+    pairing = new Pairing();
     botInfo: {
         username: string;
         isConnected: boolean;
@@ -18,6 +21,7 @@ export default class TGInbox extends Plugin {
         this.addSettingTab(new TGInboxSettingTab(this.app, this));
         this.addCommands();
         await this.loadSettings();
+        if (this.settings.allow_users.length === 0) this.pairing.renew();
         this.companion = new Companion(this);
         this.registerInterval(
             window.setInterval(() => {
@@ -123,6 +127,10 @@ export default class TGInbox extends Plugin {
             DEFAULT_SETTINGS,
             (await this.loadData()) as Partial<TGInboxSettings>,
         );
+        // Installs from before the setup checklist: a known owner chat means messages have come in.
+        if (this.settings.first_message_saved === undefined && this.settings.owner_chat_id) {
+            this.settings.first_message_saved = true;
+        }
     }
 
     async saveSettings() {

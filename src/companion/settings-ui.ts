@@ -368,6 +368,10 @@ export function renderCompanionSettings(
             try {
                 const out = await co.llmOn(backend, "只回答两个字：收到", 60);
                 new Notice(`${BACKEND_NAMES[backend]}回了：${out.slice(0, 60)}`);
+                if (!plugin.settings.model_tested) {
+                    plugin.settings.model_tested = true;
+                    await plugin.saveSettings();
+                }
             } catch (e) {
                 new Notice(
                     `${BACKEND_NAMES[backend]}没连上：` +

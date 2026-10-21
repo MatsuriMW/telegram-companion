@@ -114,3 +114,80 @@ If your plugin does not need CSS, delete this file.
 .tg-companion-quip > .setting-item-control > .extra-setting-button {
   margin-left: auto;
 }
+
+/* ---------- Setup checklist ---------- */
+.tg-setup {
+  margin: 8px 0 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+}
+
+.tg-setup > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.tg-setup.is-done > summary {
+  color: var(--text-muted);
+  font-weight: normal;
+}
+
+.tg-setup-step {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.tg-setup-mark {
+  flex: 0 0 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--background-modifier-border);
+  text-align: center;
+  line-height: 20px;
+  font-size: 0.8em;
+  color: var(--text-muted);
+}
+
+.tg-setup-step.is-done .tg-setup-mark {
+  background: var(--color-green);
+  border-color: var(--color-green);
+  color: var(--text-on-accent);
+}
+
+.tg-setup-step.is-current .tg-setup-mark {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.tg-setup-step.is-done .tg-setup-title {
+  color: var(--text-muted);
+}
+
+.tg-setup-step.is-current .tg-setup-title {
+  font-weight: 600;
+}
+
+.tg-setup-hint {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.tg-setup-code-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.tg-setup-code {
+  font-family: var(--font-monospace);
+  font-size: 1.6em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  user-select: all;
+}

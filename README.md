@@ -43,10 +43,11 @@ Desktop only. The bot runs inside Obsidian on your computer, so Obsidian has to 
 ## Usage
 
 1. In Telegram, message `@BotFather`, send `/newbot`, and copy the token it gives you.
-2. Open the plugin settings. Paste the token into **Bot token**, and put your Telegram username (without `@`) or numeric ID into the allowlist field (labelled 白名单). Only people on that list are answered. The status at the top right shows the bot's name once it is connected.
-3. Send the bot any text, photo or link. It is written into today's daily note. The folder and date format follow the Daily notes core plugin (or Periodic Notes).
-4. For the companion part, pick a model backend in the section labelled 背后的模型 (see [Model backends](#model-backends)). The test button in that section confirms the connection.
-5. Send `/chat` to start talking and `/record` to go back to capturing. `/help` lists every command.
+2. Open the plugin settings. A **Getting started** checklist at the top ticks off each step as you do it. Paste the token into **Bot token**; the checklist shows the bot's name once it is connected.
+3. **Pair**: the checklist shows a 6-digit code. Open your bot in Telegram, tap Start and send it the code. Your account is then on the allowlist, and only accounts on the allowlist are answered. You can also type Telegram usernames (without `@`) or numeric IDs into the allowlist yourself.
+4. Send the bot any text, photo or link. It is written into today's daily note. The folder and date format follow the Daily notes core plugin (or Periodic Notes).
+5. For the companion part, pick a model backend in the section labelled 背后的模型 (see [Model backends](#model-backends)). The test button in that section confirms the connection.
+6. Send `/chat` to start talking and `/record` to go back to capturing. `/help` lists every command.
 
 ### Two modes
 
