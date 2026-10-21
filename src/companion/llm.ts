@@ -1,13 +1,16 @@
 import { Platform, requestUrl } from "obsidian";
 import { BACKEND_NAMES, CLI_MODELS, type Backend, type CompanionSettings } from "./types";
+import { tr } from "../i18n";
 
 // 模型后端：Claude Code 命令行 / Anthropic API / OpenAI 兼容接口（DeepSeek、OpenRouter、Ollama……）
 // 每次调用只发一段提示词、拿回一段文字，不带工具、不存会话。
 
 export function backendLabel(c: CompanionSettings, b: Backend = c.backend): string {
-    if (b === "anthropic") return `${BACKEND_NAMES.anthropic} · ${c.anthropicModel || "未填模型"}`;
-    if (b === "openai") return `${BACKEND_NAMES.openai} · ${c.openaiModel || "未填模型"}`;
-    return `${BACKEND_NAMES.cli} · ${c.cliModel || "默认模型"}`;
+    if (b === "anthropic")
+        return `${BACKEND_NAMES.anthropic} · ${c.anthropicModel || tr("未填模型", "no model set")}`;
+    if (b === "openai")
+        return `${BACKEND_NAMES.openai} · ${c.openaiModel || tr("未填模型", "no model set")}`;
+    return `${BACKEND_NAMES.cli} · ${c.cliModel || tr("默认模型", "default model")}`;
 }
 
 /** 写在回复末尾的短名字。 */
@@ -43,7 +46,7 @@ export function backendChoices(c: CompanionSettings): BackendChoice[] {
         for (const m of CLI_MODELS) {
             out.push({
                 id: `cli:${m}`,
-                label: `命令行 · ${m || "默认"}`,
+                label: tr(`命令行 · ${m || "默认"}`, `CLI · ${m || "default"}`),
                 on: c.backend === "cli" && (c.cliModel || "") === m,
             });
         }
@@ -76,7 +79,8 @@ export async function callModel(
     backend: Backend = c.backend,
 ): Promise<string> {
     if (backend === "anthropic") {
-        if (!c.anthropicKey) throw new Error("还没填 Anthropic API key");
+        if (!c.anthropicKey)
+            throw new Error(tr("还没填 Anthropic API key", "No Anthropic API key yet"));
         return callHttp(
             "https://api.anthropic.com/v1/messages",
             { "x-api-key": c.anthropicKey, "anthropic-version": "2023-06-01" },
@@ -94,7 +98,8 @@ export async function callModel(
         );
     }
     if (backend === "openai") {
-        if (!c.openaiBase || !c.openaiModel) throw new Error("还没填接口地址或模型名");
+        if (!c.openaiBase || !c.openaiModel)
+            throw new Error(tr("还没填接口地址或模型名", "No API address or model name yet"));
         return callHttp(
             c.openaiBase.replace(/\/+$/, "") + "/chat/completions",
             c.openaiKey ? { Authorization: `Bearer ${c.openaiKey}` } : {},
@@ -160,7 +165,10 @@ async function callHttp<T extends ApiError>(
     const res = await Promise.race([
         req,
         new Promise<never>((_, rej) =>
-            window.setTimeout(() => rej(new Error("模型超时")), timeoutSec * 1000),
+            window.setTimeout(
+                () => rej(new Error(tr("模型超时", "The model timed out"))),
+                timeoutSec * 1000,
+            ),
         ),
     ]);
     let d: T | null = null;
@@ -172,16 +180,23 @@ async function callHttp<T extends ApiError>(
     if (res.status >= 400) {
         const e = d?.error;
         const why = (typeof e === "string" ? e : e?.message) || res.text || "";
-        throw new Error(`模型接口 ${res.status}：${why.slice(0, 200)}`);
+        throw new Error(
+            tr(
+                `模型接口 ${res.status}：${why.slice(0, 200)}`,
+                `Model API ${res.status}: ${why.slice(0, 200)}`,
+            ),
+        );
     }
     const text = String((d && pick(d)) || "").trim();
-    if (!text) throw new Error("模型没有返回内容");
+    if (!text) throw new Error(tr("模型没有返回内容", "The model returned nothing"));
     return text;
 }
 
 function callCli(c: CompanionSettings, prompt: string, timeoutSec: number): Promise<string> {
     if (!Platform.isDesktopApp) {
-        return Promise.reject(new Error("命令行后端只能在桌面端用"));
+        return Promise.reject(
+            new Error(tr("命令行后端只能在桌面端用", "The CLI backend only works on desktop")),
+        );
     }
     // Node 模块只在桌面端有，用到时再取。这里必须拿真正的进程环境：
     // 打包进来的 grammy 网页版自带一个 process 替身，里面没有 HOME，命令行就找不到自己的登录。
@@ -225,7 +240,7 @@ function callCli(c: CompanionSettings, prompt: string, timeoutSec: number): Prom
         child.stderr?.on("data", (d) => (err += d.toString()));
         const timer = window.setTimeout(() => {
             child.kill();
-            reject(new Error("claude 超时"));
+            reject(new Error(tr("claude 超时", "claude timed out")));
         }, timeoutSec * 1000);
         child.on("error", (e: Error) => {
             window.clearTimeout(timer);
@@ -238,11 +253,21 @@ function callCli(c: CompanionSettings, prompt: string, timeoutSec: number): Prom
                 d = JSON.parse(out) as CliReply;
             } catch {
                 return reject(
-                    new Error((err || out || `claude 退出码 ${code}`).trim().slice(0, 300)),
+                    new Error(
+                        (
+                            err ||
+                            out ||
+                            tr(`claude 退出码 ${code}`, `claude exited with code ${code}`)
+                        )
+                            .trim()
+                            .slice(0, 300),
+                    ),
                 );
             }
             if (d.is_error)
-                return reject(new Error(String(d.result || "claude 出错").slice(0, 300)));
+                return reject(
+                    new Error(String(d.result || tr("claude 出错", "claude failed")).slice(0, 300)),
+                );
             resolve(String(d.result || "").trim());
         });
         child.stdin?.write(prompt);

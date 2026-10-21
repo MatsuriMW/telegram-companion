@@ -1,3 +1,5 @@
+import { tr } from "../i18n";
+
 /** An instant reply to one of the user's own catchphrases (no model call). */
 export interface Quip {
     /** Trigger words, separated by commas. */
@@ -100,7 +102,10 @@ export const DEFAULT_QUIPS: Quip[] = [
     {
         words: "谢谢, 谢啦, 多谢, thanks, thx, thank you",
         kind: "reply",
-        replies: "不客气呀 🫶\n嘿嘿，收到 💚\n我一直在 🫂",
+        replies: tr(
+            "不客气呀 🫶\n嘿嘿，收到 💚\n我一直在 🫂",
+            "Anytime 🫶\nGot it 💚\nI'm always here 🫂",
+        ),
         chat: false,
         happy: false,
     },
@@ -108,11 +113,11 @@ export const DEFAULT_QUIPS: Quip[] = [
 
 export const COMPANION_DEFAULTS: CompanionSettings = {
     enabled: true,
-    profilePath: "陪伴档案.md",
+    profilePath: tr("陪伴档案.md", "Companion profile.md"),
     personaOn: false,
-    personaPath: "陪伴人设.md",
+    personaPath: tr("陪伴人设.md", "Companion persona.md"),
     personaActive: "",
-    lang: "中文",
+    lang: tr("中文", "English"),
     mascot: "✨",
     quipsOn: true,
     quips: DEFAULT_QUIPS,
@@ -142,9 +147,9 @@ export const COMPANION_DEFAULTS: CompanionSettings = {
 };
 
 export const BACKEND_NAMES: Record<Backend, string> = {
-    cli: "Claude 命令行",
+    cli: tr("Claude 命令行", "Claude CLI"),
     anthropic: "Anthropic API",
-    openai: "OpenAI 兼容接口",
+    openai: tr("OpenAI 兼容接口", "OpenAI-compatible"),
 };
 
 export const CLI_MODELS = ["", "sonnet", "opus", "haiku"];

@@ -1,4 +1,5 @@
 import type { Backend } from "./types";
+import { tr } from "../i18n";
 
 // 主后端失败时用备用后端重试一次。这里只管「先试谁、再试谁」，不碰网络，方便单独测试。
 
@@ -44,7 +45,12 @@ export class FallbackRunner {
                     this.down = null;
                     return { text, backend: primary };
                 } catch (e1) {
-                    throw new Error(`${reason(e1)}；备用后端也没连上：${reason(e2)}`);
+                    throw new Error(
+                        tr(
+                            `${reason(e1)}；备用后端也没连上：${reason(e2)}`,
+                            `${reason(e1)}; the fallback backend failed too: ${reason(e2)}`,
+                        ),
+                    );
                 }
             }
         }
@@ -59,7 +65,12 @@ export class FallbackRunner {
                 const text = await call(fallback);
                 return { text, backend: fallback, fellBack: { from: primary, why } };
             } catch (e2) {
-                throw new Error(`${why}；备用后端也没连上：${reason(e2)}`);
+                throw new Error(
+                    tr(
+                        `${why}；备用后端也没连上：${reason(e2)}`,
+                        `${why}; the fallback backend failed too: ${reason(e2)}`,
+                    ),
+                );
             }
         }
     }

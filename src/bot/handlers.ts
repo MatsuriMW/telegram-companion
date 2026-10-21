@@ -11,6 +11,7 @@ import type TGInbox from "../main";
 import type { Companion } from "../companion/companion";
 import { notifyPlugin, spiralPlugin } from "../integrations";
 import { helpHtml } from "./commands";
+import { tr } from "../i18n";
 
 async function executePostAction(ctx: Context, settings: TGInboxSettings): Promise<void> {
     if (settings.action_after_reception === "delete") {
@@ -56,17 +57,39 @@ export function setupCommands(
 // 要等一会儿的回复（读日记、调模型）：先马上回一条「收到，在想……」，每隔几秒换一句进度，
 // 写好后删掉这条提示、把正式回复作为新消息发出（新消息才会在手机上响，光编辑原消息不会提醒）
 const THINKING: Record<string, string[]> = {
-    low: ["🫂 收到了，我在……", "📖 在看你这几天的日记……", "✍️ 想想怎么跟你说……"],
-    happy: ["✨ 收到！……", "📖 看看你最近都干了啥……", "✍️ 马上……"],
-    chat: ["💭 收到，在想……", "📖 翻了翻你最近的日记……", "✍️ 在组织语言……"],
-    summary: ["🌙 收到，在整理今天……", "📖 在读今天的日记……", "✍️ 在写小结……", "🫶 快好了……"],
-    profile: ["🔄 收到，在重新认识你……", "📖 在读这周的日记……", "🧩 在整理近况……", "🫶 快好了……"],
+    low: [
+        tr("🫂 收到了，我在……", "🫂 Got it, I'm here…"),
+        tr("📖 在看你这几天的日记……", "📖 Reading your last few days…"),
+        tr("✍️ 想想怎么跟你说……", "✍️ Thinking how to put it…"),
+    ],
+    happy: [
+        tr("✨ 收到！……", "✨ Got it!…"),
+        tr("📖 看看你最近都干了啥……", "📖 Looking at what you've been up to…"),
+        tr("✍️ 马上……", "✍️ One moment…"),
+    ],
+    chat: [
+        tr("💭 收到，在想……", "💭 Got it, thinking…"),
+        tr("📖 翻了翻你最近的日记……", "📖 Flipping through your recent notes…"),
+        tr("✍️ 在组织语言……", "✍️ Finding the words…"),
+    ],
+    summary: [
+        tr("🌙 收到，在整理今天……", "🌙 Got it, going over today…"),
+        tr("📖 在读今天的日记……", "📖 Reading today's note…"),
+        tr("✍️ 在写小结……", "✍️ Writing the summary…"),
+        tr("🫶 快好了……", "🫶 Almost there…"),
+    ],
+    profile: [
+        tr("🔄 收到，在重新认识你……", "🔄 Got it, getting to know you again…"),
+        tr("📖 在读这周的日记……", "📖 Reading this week's notes…"),
+        tr("🧩 在整理近况……", "🧩 Sorting out what's new…"),
+        tr("🫶 快好了……", "🫶 Almost there…"),
+    ],
     week: [
-        "🧭 收到，在翻这一周……",
-        "📖 一天一天读日记……",
-        "🧩 在归类这周做的事……",
-        "✍️ 在写周洞察……",
-        "🫶 快好了，再等等……",
+        tr("🧭 收到，在翻这一周……", "🧭 Got it, going through the week…"),
+        tr("📖 一天一天读日记……", "📖 Reading day by day…"),
+        tr("🧩 在归类这周做的事……", "🧩 Grouping what you did…"),
+        tr("✍️ 在写周洞察……", "✍️ Writing the weekly review…"),
+        tr("🫶 快好了，再等等……", "🫶 Almost there, hang on…"),
     ],
 };
 
@@ -99,9 +122,9 @@ async function withThinking(
         window.clearInterval(timer);
         console.error("[telegram-companion] 生成回复", err);
         const msg =
-            "😵 刚才卡住了，没写出来：" +
+            tr("😵 刚才卡住了，没写出来：", "😵 I got stuck and couldn't finish: ") +
             String((err as Error)?.message || err).slice(0, 120) +
-            "\n再发一次试试？";
+            tr("\n再发一次试试？", "\\nTry sending it again?");
         if (ph) await ctx.api.editMessageText(ph.chat.id, ph.message_id, msg).catch(() => {});
         else await ctx.reply(msg).catch(() => {});
     }
@@ -148,8 +171,14 @@ export function setupMessageHandlers(
         if (mine ? !co : !nn?.onTgCallback) {
             await ctx.answerCallbackQuery({
                 text: mine
-                    ? "这台设备上没开陪伴，到电脑上再点一次"
-                    : "这台设备上没有「任务提醒」插件，到电脑上再点一次",
+                    ? tr(
+                          "这台设备上没开陪伴，到电脑上再点一次",
+                          "The companion is off on this device; tap again on your computer",
+                      )
+                    : tr(
+                          "这台设备上没有「任务提醒」插件，到电脑上再点一次",
+                          "This device doesn't have the reminders plugin; tap again on your computer",
+                      ),
             });
             return;
         }
@@ -164,7 +193,9 @@ export function setupMessageHandlers(
         } catch (err) {
             console.error("[telegram-companion] 按钮回调", err);
             await ctx.answerCallbackQuery({
-                text: "出错了：" + String((err as Error).message || err).slice(0, 100),
+                text:
+                    tr("出错了：", "Something went wrong: ") +
+                    String((err as Error).message || err).slice(0, 100),
             });
         }
     });
@@ -207,8 +238,11 @@ export function setupMessageHandlers(
                     await co.chatStart("explicit");
                     await ctx.reply(
                         was === "explicit"
-                            ? "💬 已经在对话模式啦，接着说～"
-                            : "💬 <b>进入对话模式</b>\n接下来你说的每句我都会回，这些对话不进日记。\n📝 想顺手记一句，用「记 」开头\n🚪 说「退出」回到记录模式",
+                            ? tr("💬 已经在对话模式啦，接着说～", "💬 Already in chat mode, go on~")
+                            : tr(
+                                  "💬 <b>进入对话模式</b>\n接下来你说的每句我都会回，这些对话不进日记。\n📝 想顺手记一句，用「记 」开头\n🚪 说「退出」回到记录模式",
+                                  "💬 <b>Chat mode on</b>\\nI'll answer everything you say from now on, and none of it goes into your notes.\\n🚪 Send /record to go back to record mode",
+                              ),
                         { parse_mode: "HTML" },
                     );
                     return;
@@ -217,8 +251,14 @@ export function setupMessageHandlers(
                     const c = await co.chatEnd();
                     await ctx.reply(
                         c
-                            ? `📝 回到记录模式啦，接下来发什么我都记进日记 ${co.m}`
-                            : "📝 现在就是记录模式，发什么我都记进日记",
+                            ? tr(
+                                  `📝 回到记录模式啦，接下来发什么我都记进日记 ${co.m}`,
+                                  `📝 Back in record mode; everything you send goes into your daily note ${co.m}`,
+                              )
+                            : tr(
+                                  "📝 现在就是记录模式，发什么我都记进日记",
+                                  "📝 Already in record mode; everything you send goes into your daily note",
+                              ),
                     );
                     return;
                 }
@@ -236,10 +276,19 @@ export function setupMessageHandlers(
                             : 0;
                     await ctx.reply(
                         a === "explicit"
-                            ? "💬 现在是<b>对话模式</b>（你自己开的），说「退出」回到记录模式"
+                            ? tr(
+                                  "💬 现在是<b>对话模式</b>（你自己开的），说「退出」回到记录模式",
+                                  "💬 <b>Chat mode</b> (you started it). Send /record to go back to record mode",
+                              )
                             : a === "auto"
-                              ? `💬 现在是<b>对话模式</b>（自动进入的），再过 ${left} 分钟不说话就回到记录模式；说「退出」马上回去`
-                              : "📝 现在是<b>记录模式</b>，发什么我都记进日记；说「对话模式」开始聊",
+                              ? tr(
+                                    `💬 现在是<b>对话模式</b>（自动进入的），再过 ${left} 分钟不说话就回到记录模式；说「退出」马上回去`,
+                                    `💬 <b>Chat mode</b> (started automatically). After ${left} more minutes of silence it goes back to record mode; send /record to go back now`,
+                                )
+                              : tr(
+                                    "📝 现在是<b>记录模式</b>，发什么我都记进日记；说「对话模式」开始聊",
+                                    "📝 <b>Record mode</b>: everything you send goes into your daily note. Send /chat to start chatting",
+                                ),
                         { parse_mode: "HTML" },
                     );
                     return;
@@ -265,12 +314,18 @@ export function setupMessageHandlers(
                 if (/^(?:你了解我什么|你眼里的我|画像|我的画像|\/me)$/.test(cmd)) {
                     const recent = co.recentLines(await co.read(co.cfg.profilePath));
                     const when = co.cfg.profileUpdatedAt
-                        ? moment(co.cfg.profileUpdatedAt).format("M月D日")
+                        ? moment(co.cfg.profileUpdatedAt).format(tr("M月D日", "MMM D"))
                         : null;
                     await ctx.reply(
                         recent.length
-                            ? `🪞 <b>我现在对你的了解</b>${when ? `（${when}更新）` : ""}\n\n${recent.map((x) => co.esc(x)).join("\n")}\n\n<i>更深的那部分在「陪伴档案」里；想让我现在重新看一遍，发「更新画像」</i>`
-                            : "🪞 我还没整理过你的近况，发「更新画像」我现在就看一遍",
+                            ? tr(
+                                  `🪞 <b>我现在对你的了解</b>${when ? `（${when}更新）` : ""}\n\n${recent.map((x) => co.esc(x)).join("\n")}\n\n<i>更深的那部分在「陪伴档案」里；想让我现在重新看一遍，发「更新画像」</i>`,
+                                  `🪞 <b>What I know about you</b>${when ? ` (updated ${when})` : ""}\n\n${recent.map((x) => co.esc(x)).join("\n")}\n\n<i>The deeper part is in your profile note. Send /profile to have me go over it again now</i>`,
+                              )
+                            : tr(
+                                  "🪞 我还没整理过你的近况，发「更新画像」我现在就看一遍",
+                                  "🪞 I haven't gone over your recent days yet. Send /profile and I'll do it now",
+                              ),
                         { parse_mode: "HTML" },
                     );
                     return;
@@ -284,12 +339,22 @@ export function setupMessageHandlers(
             }
             if (nn?.pushStale && /^(?:拖延|拖了什么|\/stale)$/.test(cmd)) {
                 if (!(await nn.pushStale()))
-                    await ctx.reply(`👍 今天日记里没有拖了 ${nn.settings.staleDays} 天以上的事`);
+                    await ctx.reply(
+                        tr(
+                            `👍 今天日记里没有拖了 ${nn.settings.staleDays} 天以上的事`,
+                            `👍 Nothing in today's note has been put off for more than ${nn.settings.staleDays} days`,
+                        ),
+                    );
                 return;
             }
             if (nn?.pushCards && /^(?:闪卡|卡片|复习|\/cards)$/.test(cmd)) {
                 if (!(await nn.pushCards()))
-                    await ctx.reply("🃏 现在没有到期的卡（或者 Anki 没开着，数不了）");
+                    await ctx.reply(
+                        tr(
+                            "🃏 现在没有到期的卡（或者 Anki 没开着，数不了）",
+                            "🃏 No cards due right now (or Anki isn't open, so they can't be counted)",
+                        ),
+                    );
                 return;
             }
             if (nn?.pushInsight && /^(?:周洞察|这周做了什么|本周|\/week)$/.test(cmd)) {

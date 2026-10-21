@@ -5,6 +5,7 @@ import { TGInboxSettingTab } from "./settings";
 import { runAfterSync } from "./utils/sync";
 import { Companion } from "./companion/companion";
 import { Pairing } from "./bot/pairing";
+import { tr } from "./i18n";
 
 export default class TGInbox extends Plugin {
     settings: TGInboxSettings;
@@ -30,9 +31,13 @@ export default class TGInbox extends Plugin {
         );
 
         if (this.settings.disable_auto_reception) {
-            this.addRibbonIcon("send", "Telegram Companion：收一次消息", () => {
-                void this.bot?.getUpdates();
-            });
+            this.addRibbonIcon(
+                "send",
+                tr("Telegram Companion：收一次消息", "Telegram Companion: fetch messages once"),
+                () => {
+                    void this.bot?.getUpdates();
+                },
+            );
         }
 
         // Defer bot startup until the workspace (and therefore the vault file
@@ -55,56 +60,77 @@ export default class TGInbox extends Plugin {
     addCommands() {
         this.addCommand({
             id: "tg-inbox-getupdates",
-            name: "收一次消息",
+            name: tr("收一次消息", "Fetch messages once"),
             callback: () => this.bot?.getUpdates(),
         });
 
         this.addCommand({
             id: "tg-inbox-start",
-            name: "启动机器人",
+            name: tr("启动机器人", "Start the bot"),
             callback: () => this.startBot(),
         });
 
         this.addCommand({
             id: "tg-inbox-stop",
-            name: "停止机器人",
+            name: tr("停止机器人", "Stop the bot"),
             callback: () => this.stopBot(),
         });
 
         this.addCommand({
             id: "profile-create",
-            name: "陪伴档案：新建一份模板",
+            name: tr("陪伴档案：新建一份模板", "Profile note: create from template"),
             callback: async () => {
                 const made = await this.companion.createProfile();
                 const path = this.companion.cfg.profilePath;
-                new Notice(made ? `已新建 ${path}，打开它填上你自己的情况` : `${path} 已经有了`);
+                new Notice(
+                    made
+                        ? tr(
+                              `已新建 ${path}，打开它填上你自己的情况`,
+                              `Created ${path}. Open it and fill in your own details`,
+                          )
+                        : tr(`${path} 已经有了`, `${path} already exists`),
+                );
                 await this.app.workspace.openLinkText(path, "", false);
             },
         });
 
         this.addCommand({
             id: "profile-update",
-            name: "陪伴档案：现在更新「近况」并发到 Telegram",
+            name: tr(
+                "陪伴档案：现在更新「近况」并发到 Telegram",
+                "Profile note: update “Recently” now and send it to Telegram",
+            ),
             callback: async () => {
-                new Notice("在更新陪伴档案（要一两分钟），好了会发到 Telegram");
+                new Notice(
+                    tr(
+                        "在更新陪伴档案（要一两分钟），好了会发到 Telegram",
+                        "Updating the profile note (a minute or two); the result goes to Telegram",
+                    ),
+                );
                 const r = await this.companion.profileUpdate({ manual: true });
-                if (!r.ok) new Notice(r.msg ?? "没写成");
+                if (!r.ok) new Notice(r.msg ?? tr("没写成", "Not written"));
             },
         });
 
         this.addCommand({
             id: "profile-digest",
-            name: "陪伴档案：现在把对话里的新信息整理进去",
+            name: tr(
+                "陪伴档案：现在把对话里的新信息整理进去",
+                "Profile note: add what came up in chat now",
+            ),
             callback: async () => {
                 const r = await this.companion.digestChat({ force: true });
                 new Notice(
                     r.ok
                         ? r.noted
-                            ? "整理好了，发到 Telegram 了"
-                            : "这些话里没有要记的新信息"
+                            ? tr("整理好了，发到 Telegram 了", "Done; sent to Telegram")
+                            : tr(
+                                  "这些话里没有要记的新信息",
+                                  "Nothing new worth noting in those messages",
+                              )
                         : r.skipped
-                          ? "没有还没整理的对话"
-                          : (r.msg ?? "没写成"),
+                          ? tr("没有还没整理的对话", "No chat left to go through")
+                          : (r.msg ?? tr("没写成", "Not written")),
                 );
             },
         });
@@ -140,7 +166,7 @@ export default class TGInbox extends Plugin {
     async initBot() {
         try {
             if (!this.settings.token) {
-                new Notice("还没填 Telegram bot token");
+                new Notice(tr("还没填 Telegram bot token", "No Telegram bot token yet"));
                 return;
             }
             await this.stopBot();
@@ -150,13 +176,13 @@ export default class TGInbox extends Plugin {
             }
         } catch (error) {
             console.error("Error launching bot:", error);
-            new Notice("机器人没启动成功");
+            new Notice(tr("机器人没启动成功", "The bot did not start"));
             this.bot = null;
         }
     }
 
     startBot() {
-        new Notice("Telegram 机器人启动中");
+        new Notice(tr("Telegram 机器人启动中", "Starting the Telegram bot"));
         if (this.bot) {
             this.bot.start();
         }
@@ -166,7 +192,7 @@ export default class TGInbox extends Plugin {
         try {
             if (this.bot) {
                 await this.bot.bot.stop();
-                new Notice("Telegram 机器人已停止");
+                new Notice(tr("Telegram 机器人已停止", "Telegram bot stopped"));
             }
         } catch (error) {
             console.error("Error stopping bot:", error);

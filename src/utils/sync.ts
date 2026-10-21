@@ -1,4 +1,5 @@
 import { App, Notice, type Plugin } from "obsidian";
+import { tr } from "../i18n";
 
 // Obsidian Sync and the two Remotely plugins are read through fields that are
 // not part of the public typings; these interfaces list only what is used here.
@@ -24,7 +25,7 @@ type AppInternals = App & {
 };
 
 function waitForObsidianSync(sync: ObsidianSync, cb: () => void) {
-    new Notice("等 Obsidian Sync 同步完……");
+    new Notice(tr("等 Obsidian Sync 同步完……", "Waiting for Obsidian Sync to finish…"));
     if (sync.syncStatus?.toLowerCase() === "fully synced") {
         cb();
         return;
@@ -47,7 +48,7 @@ function waitForRemotelySaveSync(remotely_save: RemotelySave, cb: () => void) {
         return;
     } else {
         // If Remotely Save is enabled, we need to wait for it to finish.
-        new Notice("等 Remotely Save 同步完……");
+        new Notice(tr("等 Remotely Save 同步完……", "Waiting for Remotely Save to finish…"));
         window.setTimeout(() => {
             const interval = window.setInterval(() => {
                 if (!remotely_save.isSyncing) {
@@ -70,7 +71,7 @@ function waitForRemotelySync(remotely_sync: RemotelySync, cb: () => void) {
         return;
     } else {
         // If Remotely Secure is enabled, we need to wait for it to finish.
-        new Notice("等 Remotely Sync 同步完……");
+        new Notice(tr("等 Remotely Sync 同步完……", "Waiting for Remotely Sync to finish…"));
         window.setTimeout(() => {
             const interval = window.setInterval(() => {
                 if (remotely_sync.syncStatus === "idle") {

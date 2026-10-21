@@ -22,6 +22,7 @@ import {
     type Quip,
     type SuggestionSet,
 } from "./types";
+import { tr } from "../i18n";
 
 // 陪伴：对话模式 / 记录模式、读日记回话、口癖的即时回应、收工小结、
 // 陪伴档案（画像）的每周更新和对话结束后的增量整理。
@@ -40,10 +41,15 @@ const FEEL_RE =
     /(好?累|难受|好?烦|崩溃|焦虑|难过|伤心|想哭|哭了|emo|撑不住|不想活|想死|没意思|好丧|郁闷|压力好?大|心累|孤独|迷茫|自我怀疑|痛苦|绝望|委屈|失眠|睡不着|不开心|抑郁|好废|想她|想他|想你了|好想你)/i;
 const HAPPY_RE =
     /(好?开心|太好了|太棒了|好棒|好耶|耶+[!！~～]*$|搞定了?|成了|做完了|哈哈哈+|嘿嘿|nice|好爽|赢了|过了|激动|兴奋)/i;
+// The same in English, on word boundaries ("tired" yes, "retired" no).
+const FEEL_RE_EN =
+    /\b(so tired|exhausted|burn(?:ed|t) out|stressed|anxious|overwhelmed|depressed|sad|lonely|miserable|can'?t sleep|hopeless|want to die|feel(?:ing)? (?:awful|terrible|down|low))\b/i;
+const HAPPY_RE_EN =
+    /\b(so happy|yay+|woo+hoo+|nailed it|awesome|i did it|finally done|great news|excited)\b/i;
 const FEEL_SKIP = /累计|积累|累积|麻烦|烦请|没意思的话|成了一个|过了一遍/g;
 const TASK_RE = /^\s*-\s+(?:TODO|DOING|DONE|FAILED|CANCELED|WAITING|LATER|NOW|PAUSED|\[.\])\s/;
 
-const PROFILE_TEMPLATE = `> 陪伴机器人每次回你之前都会先读这一页，为的是在聊天时更了解你一点。想改它说话的方式，直接改这页，下一条消息就生效。
+const PROFILE_TEMPLATE_ZH = `> 陪伴机器人每次回你之前都会先读这一页，为的是在聊天时更了解你一点。想改它说话的方式，直接改这页，下一条消息就生效。
 > 每一项都是选填的：不想说的就空着或者整行删掉，它会当作不知道，不会追问。
 > 这页只存在你自己的库里，不会上传到任何地方保存。唯一会读到它的是你在设置里选的那个模型：生成回复时，这页会和日记摘要一起发过去；模型选本机的 Ollama 的话，就完全不出你的电脑。
 
@@ -72,7 +78,7 @@ const PROFILE_TEMPLATE = `> 陪伴机器人每次回你之前都会先读这一�
 	- 先陪着，再请我联系身边信任的人或当地的心理援助热线
 `;
 
-const PERSONA_TEMPLATE = `> 打开设置里的「人设」以后，机器人回你时会扮演这页写的角色。想换角色就改这页；想要多个角色，把设置里的路径填成一个文件夹，每篇笔记写一个，在 Telegram 里发「人设」切换。
+const PERSONA_TEMPLATE_ZH = `> 打开设置里的「人设」以后，机器人回你时会扮演这页写的角色。想换角色就改这页；想要多个角色，把设置里的路径填成一个文件夹，每篇笔记写一个，在 Telegram 里发「人设」切换。
 > 不管这页怎么写，有几条红线不变：角色一律是成年人，不写露骨内容，钱、医疗、法律的事不替你拍板，不演操控你的人格。这页里明写未满 18 岁或未成年的话，插件不会用这份人设。
 
 - 你是谁
@@ -85,6 +91,55 @@ const PERSONA_TEMPLATE = `> 打开设置里的「人设」以后，机器人回�
 - 不要做的事
 	- （比如：不要跳出角色解释自己是 AI）
 `;
+
+const PROFILE_TEMPLATE_EN = `> The companion bot reads this page before every reply, so it knows you a little better when you chat. To change how it talks to you, edit this page; it applies from the next message.
+> Every item is optional: leave out anything you don't want to say, or delete the line. It treats a blank as unknown and won't ask about it.
+> This page stays in your own vault. The only thing that reads it is the model you chose in the settings: it is sent along with a summary of your daily notes when a reply is written. With a local Ollama model it never leaves your computer.
+
+- Basics
+	- What to call me:
+	- Gender:
+	- Age:
+	- Education:
+	- MBTI:
+	- Job:
+	- What I care about lately:
+- Who I am
+	- (what I do, what keeps me busy lately, my daily rhythm)
+	- (people I care about, and how they are)
+- What usually wears me out
+	- (quoting my own daily notes works best)
+- When you answer me
+	- Meet the feeling first, then anything else; don't jump to solutions
+	- No sugar-coating or empty encouragement; when you praise me, use concrete things from my notes
+	- At most one suggestion, and a small one; none if I didn't ask
+	- Keep it short, like a message, not a report
+- When I'm happy
+	- Just be happy with me; don't use it to remind me of unfinished things
+- If I say I want to hurt myself
+	- Only use this when I actually said so this time
+	- Stay with me first, then ask me to reach out to someone I trust or a local crisis line
+`;
+
+const PERSONA_TEMPLATE_EN = `> With “Persona” turned on in the settings, the bot answers as the character described here. Edit this page to change the character. For several characters, point the setting at a folder with one note per character, and switch with /persona in Telegram.
+> Whatever this page says, a few red lines hold: every character is an adult, nothing sexually explicit, no money, medical or legal decisions made for you, and no character that manipulates you. A note that states an age under 18 or says the character is a minor is not used.
+
+- Who you are
+	- (the character's name, role, personality, and how they relate to me)
+- How you talk
+	- (tone, catchphrases, what you call me)
+	- (format: e.g. actions in parentheses; how many lines per reply)
+- My daily notes
+	- (e.g. you know what I do every day and can bring it up naturally. Or: don't mention my notes, just stay in character)
+- Things not to do
+	- (e.g. don't step out of character to explain you are an AI)
+`;
+
+const PROFILE_TEMPLATE = (): string => tr(PROFILE_TEMPLATE_ZH, PROFILE_TEMPLATE_EN);
+const PERSONA_TEMPLATE = (): string => tr(PERSONA_TEMPLATE_ZH, PERSONA_TEMPLATE_EN);
+
+/** The auto-maintained last section of the profile; the Chinese and English headings both count. */
+const RECENT_HEAD = /^- 🔄 (近况|Recently)/;
 
 // 默认人设（没开「人设」时用）：一个爱他、关心他的母性角色。想换成别的，在设置里打开「人设」写自己的
 const DEFAULT_PERSONA =
@@ -208,26 +263,39 @@ export class Companion {
         ]);
         rows.push([
             {
-                text: (cur ? "" : "✅ ") + "默认（爱你、关心你的那个人）",
+                text:
+                    (cur ? "" : "✅ ") +
+                    tr("默认（爱你、关心你的那个人）", "Default (the one who cares about you)"),
                 callback_data: "co|persona|off",
             },
         ]);
-        const now = cur ? `「${this.esc(cur.basename)}」` : "默认的那个爱你、关心你的人";
+        const now = cur
+            ? `「${this.esc(cur.basename)}」`
+            : tr("默认的那个爱你、关心你的人", "the default one who cares about you");
         const hint = files.length
-            ? "点下面的按钮切换；角色怎么说话，写在对应的笔记里"
-            : `还没有人设笔记：在 Obsidian 的插件设置里点「新建模板」，或者把「人设笔记」填成一篇笔记 / 一个文件夹（现在填的是 ${this.esc(this.cfg.personaPath)}）`;
+            ? tr(
+                  "点下面的按钮切换；角色怎么说话，写在对应的笔记里",
+                  "Tap a button to switch; how each character talks is written in its note",
+              )
+            : tr(
+                  `还没有人设笔记：在 Obsidian 的插件设置里点「新建模板」，或者把「人设笔记」填成一篇笔记 / 一个文件夹（现在填的是 ${this.esc(this.cfg.personaPath)}）`,
+                  `No persona note yet: press “New template” in the plugin settings in Obsidian, or point “Persona note” at a note or a folder (now: ${this.esc(this.cfg.personaPath)})`,
+              );
         return {
-            text: `🎭 <b>现在的人设</b>\n${now}\n\n<i>${hint}</i>`,
+            text: tr(
+                `🎭 <b>现在的人设</b>\n${now}\n\n<i>${hint}</i>`,
+                `🎭 <b>Current persona</b>\n${now}\n\n<i>${hint}</i>`,
+            ),
             markup: { inline_keyboard: rows },
         };
     }
     async createPersona(): Promise<string | null> {
-        const base = normalizePath(this.cfg.personaPath || "陪伴人设.md");
+        const base = normalizePath(this.cfg.personaPath || COMPANION_DEFAULTS.personaPath);
         const at = this.app.vault.getAbstractFileByPath(base);
         // 路径是文件夹：在里面新建一篇；是笔记：没有才建
         const p =
             at instanceof TFolder
-                ? normalizePath(`${base}/新角色.md`)
+                ? normalizePath(`${base}/${tr("新角色", "New character")}.md`)
                 : base.endsWith(".md")
                   ? base
                   : `${base}.md`;
@@ -235,7 +303,7 @@ export class Companion {
         const dir = p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "";
         if (dir && !this.app.vault.getAbstractFileByPath(dir))
             await this.app.vault.createFolder(dir);
-        await this.app.vault.create(p, PERSONA_TEMPLATE);
+        await this.app.vault.create(p, PERSONA_TEMPLATE());
         return p;
     }
 
@@ -316,7 +384,10 @@ export class Companion {
         const from = this.esc(backendShort(this.cfg, r.fellBack.from));
         const to = this.esc(backendShort(this.cfg, r.backend));
         const why = this.esc(r.fellBack.why.replace(/\s+/g, " ").slice(0, 60));
-        return `\n<i>（${from}没连上：${why}。这次是 ${to} 回的）</i>`;
+        return tr(
+            `\n<i>（${from}没连上：${why}。这次是 ${to} 回的）</i>`,
+            `\n<i>(${from} failed: ${why}. ${to} answered this time)</i>`,
+        );
     }
     backendLabel(): string {
         return backendLabel(this.cfg);
@@ -338,7 +409,10 @@ export class Companion {
             );
         }
         return {
-            text: `🧠 <b>现在用的模型</b>\n${this.esc(this.backendLabel())}${fb ? `\n🛟 备用：${this.esc(fb)}` : ""}\n\n<i>点下面的按钮切换；Anthropic API 和 OpenAI 兼容接口要先在 Obsidian 的插件设置里填好 key 和模型名才会出现</i>`,
+            text: tr(
+                `🧠 <b>现在用的模型</b>\n${this.esc(this.backendLabel())}${fb ? `\n🛟 备用：${this.esc(fb)}` : ""}\n\n<i>点下面的按钮切换；Anthropic API 和 OpenAI 兼容接口要先在 Obsidian 的插件设置里填好 key 和模型名才会出现</i>`,
+                `🧠 <b>Current model</b>\n${this.esc(this.backendLabel())}${fb ? `\n🛟 Fallback: ${this.esc(fb)}` : ""}\n\n<i>Tap a button to switch. Anthropic API and OpenAI-compatible only show up once their key and model are filled in in the plugin settings in Obsidian</i>`,
+            ),
             markup: { inline_keyboard: rows },
         };
     }
@@ -377,10 +451,13 @@ ${txt || "（今天日记里几乎没写东西）"}${persona ? `\n\n最后那几
                 )
                 .slice(0, 10);
             const list = done.length
-                ? `✅ 做完了 ${done.length} 件：\n` +
+                ? tr(`✅ 做完了 ${done.length} 件：\n`, `✅ ${done.length} done:\n`) +
                   done.map((x) => `▫️ ${this.esc(x.slice(0, 40))}`).join("\n")
-                : "今天记下的不多，也没关系。";
-            return `🌙 <b>今天收工了</b>\n${list}\n\n💬 今天做完的每一件都是真的。剩下的明天接着来，你的节奏没问题。好好睡。\n<i>（模型没连上：${this.esc(String((e as Error).message || e).slice(0, 80))}）</i>`;
+                : tr("今天记下的不多，也没关系。", "Not much written down today, and that's fine.");
+            return tr(
+                `🌙 <b>今天收工了</b>\n${list}\n\n💬 今天做完的每一件都是真的。剩下的明天接着来，你的节奏没问题。好好睡。\n<i>（模型没连上：${this.esc(String((e as Error).message || e).slice(0, 80))}）</i>`,
+                `🌙 <b>Done for today</b>\n${list}\n\n💬 Everything you finished today is real. The rest can wait for tomorrow; your pace is fine. Sleep well.\n<i>(The model could not be reached: ${this.esc(String((e as Error).message || e).slice(0, 80))})</i>`,
+            );
         }
     }
 
@@ -406,7 +483,10 @@ ${txt || "（今天日记里几乎没写东西）"}${persona ? `\n\n最后那几
             const d = day.clone().subtract(i, "day");
             for (const l of (await this.readDay(d)).split("\n")) {
                 const s = l.replace(/^\s*-\s*/, "").trim();
-                if (s.length <= 60 && FEEL_RE.test(s.replace(FEEL_SKIP, "")))
+                if (
+                    s.length <= 60 &&
+                    (FEEL_RE.test(s.replace(FEEL_SKIP, "")) || FEEL_RE_EN.test(s))
+                )
                     moods.push(`${d.format("MM-DD")}：${s}`);
             }
         }
@@ -489,11 +569,23 @@ ${persona ? personaRules : rules}`;
             failed = true;
             const soft =
                 mood === "chat"
-                    ? `${this.m} 我在听，不过这会儿脑子有点卡，没法好好回你。\n再说一遍，或者等一下再找我？`
+                    ? tr(
+                          `${this.m} 我在听，不过这会儿脑子有点卡，没法好好回你。\n再说一遍，或者等一下再找我？`,
+                          `${this.m} I'm listening, but I'm stuck right now and can't answer properly.\nSay it again, or try me in a bit?`,
+                      )
                     : mood === "happy"
-                      ? `${this.m} 听起来是好事，我跟着一起高兴 ✨\n发生什么了，跟我说说？`
-                      : "🫂 我在。现在没法细看你今天的日记，但你说累，我信。\n先别管清单，喝口水，能躺就躺一会儿。\n想说的话，接着回我这条。";
-            reply = `${soft}\n<i>（模型没连上：${this.esc(String((e as Error).message || e).slice(0, 80))}，发「模型」看看现在用的是哪个）</i>`;
+                      ? tr(
+                            `${this.m} 听起来是好事，我跟着一起高兴 ✨\n发生什么了，跟我说说？`,
+                            `${this.m} Sounds like good news, and I'm happy with you ✨\nWhat happened? Tell me?`,
+                        )
+                      : tr(
+                            "🫂 我在。现在没法细看你今天的日记，但你说累，我信。\n先别管清单，喝口水，能躺就躺一会儿。\n想说的话，接着回我这条。",
+                            "🫂 I'm here. I can't read today's note properly right now, but if you say you're tired, I believe you.\\nForget the list for a moment, drink some water, lie down if you can.\\nIf you want to talk, reply to this message.",
+                        );
+            reply = tr(
+                `${soft}\n<i>（模型没连上：${this.esc(String((e as Error).message || e).slice(0, 80))}，发「模型」看看现在用的是哪个）</i>`,
+                `${soft}\n<i>(The model could not be reached: ${this.esc(String((e as Error).message || e).slice(0, 80))}. Send /model to see which one is in use)</i>`,
+            );
         }
         const plain = reply.replace(/<[^>]+>/g, "");
         if (!failed) {
@@ -505,7 +597,10 @@ ${persona ? personaRules : rules}`;
                 .slice(-30);
         }
         if (pc.blocked)
-            note += `\n<i>（人设「${this.esc(pc.name)}」里写了未成年设定：「${this.esc(pc.blocked.slice(0, 40))}」，没用它，这次是默认的那个人回你。把角色改成成年就能用）</i>`;
+            note += tr(
+                `\n<i>（人设「${this.esc(pc.name)}」里写了未成年设定：「${this.esc(pc.blocked.slice(0, 40))}」，没用它，这次是默认的那个人回你。把角色改成成年就能用）</i>`,
+                `\n<i>(The persona “${this.esc(pc.name)}” describes a minor (“${this.esc(pc.blocked.slice(0, 40))}”), so it was not used and the default answered. Make the character an adult to use it)</i>`,
+            );
         const next: ChatTurn[] = [...history, { who: "他", text }, { who: "你", text: plain }];
         return { html: reply + note, mood, history: next.slice(-16) };
     }
@@ -533,18 +628,22 @@ ${persona ? personaRules : rules}`;
     }
     recentLines(text: string): string[] {
         const ls = text.split("\n");
-        const i = ls.findIndex((l) => l.startsWith("- 🔄 近况"));
+        const i = ls.findIndex((l) => RECENT_HEAD.test(l));
         const out: string[] = [];
         for (let j = i + 1; i >= 0 && j < ls.length && ls[j].startsWith("	- "); j++)
             out.push(ls[j].replace(/^\t- /, ""));
         return out;
     }
     private async writeRecent(f: TFile, lines: string[]): Promise<void> {
-        const head = `- 🔄 近况（自动更新 · 最后更新 ${moment().format("YYYY-MM-DD")} · 这一节会被改写，想长期留着的写到上面）`;
+        const date = moment().format("YYYY-MM-DD");
+        const head = tr(
+            `- 🔄 近况（自动更新 · 最后更新 ${date} · 这一节会被改写，想长期留着的写到上面）`,
+            `- 🔄 Recently (updated automatically · last ${date} · this section gets rewritten; put anything you want to keep above it)`,
+        );
         const block = [head, ...lines.map((x) => `\t- ${x}`)];
         await this.app.vault.process(f, (txt) => {
             const ls = txt.split("\n");
-            const i = ls.findIndex((l) => l.startsWith("- 🔄 近况"));
+            const i = ls.findIndex((l) => RECENT_HEAD.test(l));
             if (i < 0) return txt.replace(/\n*$/, "\n") + block.join("\n") + "\n";
             let j = i + 1;
             while (j < ls.length && !/^\S/.test(ls[j])) j++;
@@ -610,7 +709,10 @@ ${persona ? personaRules : rules}`;
         if (!f)
             return {
                 ok: false,
-                msg: `没找到陪伴档案（${c.profilePath}），在插件设置里点「新建模板」`,
+                msg: tr(
+                    `没找到陪伴档案（${c.profilePath}），在插件设置里点「新建模板」`,
+                    `No profile note found (${c.profilePath}). Press “New template” in the plugin settings`,
+                ),
             };
         const profile = await this.app.vault.read(f);
         const day = this.today();
@@ -655,10 +757,23 @@ ${chats || "（没有）"}
             out = await this.llm(prompt, 300);
         } catch (e) {
             console.error("[telegram-companion] 更新陪伴档案", e);
-            return { ok: false, msg: `没写成：${(e as Error).message || e}` };
+            return {
+                ok: false,
+                msg: tr(
+                    `没写成：${(e as Error).message || e}`,
+                    `Not written: ${(e as Error).message || e}`,
+                ),
+            };
         }
         const { recent, sugs } = this.parseProfileOut(out, sections, 8, 3);
-        if (!recent.length) return { ok: false, msg: "模型没按格式回，档案没动" };
+        if (!recent.length)
+            return {
+                ok: false,
+                msg: tr(
+                    "模型没按格式回，档案没动",
+                    "The model's answer was not in the expected format; the profile was left as it was",
+                ),
+            };
         await this.writeRecent(f, recent);
         c.chatMemory = [];
         c.sugs = {
@@ -697,7 +812,7 @@ ${chats || "（没有）"}
             return { ok: false, skipped: true };
         }
         const f = this.profileFile();
-        if (!f) return { ok: false, msg: "没找到陪伴档案" };
+        if (!f) return { ok: false, msg: tr("没找到陪伴档案", "No profile note found") };
         this.digesting = true;
         try {
             const profile = await this.app.vault.read(f);
@@ -725,7 +840,13 @@ ${this.chatLines(pend)}
             } catch (e) {
                 // 没写成：这些话留着，下次对话结束再试
                 console.error("[telegram-companion] 增量整理画像", e);
-                return { ok: false, msg: `没写成：${(e as Error).message || e}` };
+                return {
+                    ok: false,
+                    msg: tr(
+                        `没写成：${(e as Error).message || e}`,
+                        `Not written: ${(e as Error).message || e}`,
+                    ),
+                };
             }
             const { recent: changed, sugs } = this.parseProfileOut(out, sections, 3, 2);
             if (changed.length) {
@@ -761,14 +882,31 @@ ${this.chatLines(pend)}
         const E = (x: string) => this.esc(x);
         const lines =
             ps.kind === "inc"
-                ? ["🧩 <b>刚才聊的，我记了一下</b>"]
+                ? [
+                      tr(
+                          "🧩 <b>刚才聊的，我记了一下</b>",
+                          "🧩 <b>I noted a few things from our chat</b>",
+                      ),
+                  ]
                 : [
-                      `🔄 <b>${ps.kind === "manual" ? "更新好了" : "这周"}，我对你的了解更新了一下</b>`,
+                      tr(
+                          `🔄 <b>${ps.kind === "manual" ? "更新好了" : "这周"}，我对你的了解更新了一下</b>`,
+                          `🔄 <b>${ps.kind === "manual" ? "Done" : "This week"}: I updated what I know about you</b>`,
+                      ),
                   ];
         if (ps.lines && ps.lines.length) lines.push("", ...ps.lines.map(E));
         if (ps.items.length) {
-            const ask = ps.kind === "inc" ? "听起来是你长期的特点" : "这周看到的新特点";
-            lines.push("", `💡 <b>${ask}，要不要记进你的档案？</b>（点 ✅ 才会写进去）`);
+            const ask =
+                ps.kind === "inc"
+                    ? tr("听起来是你长期的特点", "Sounds like something lasting about you")
+                    : tr("这周看到的新特点", "Something new I noticed this week");
+            lines.push(
+                "",
+                tr(
+                    `💡 <b>${ask}，要不要记进你的档案？</b>（点 ✅ 才会写进去）`,
+                    `💡 <b>${ask}. Add it to your profile?</b> (only written if you tap ✅)`,
+                ),
+            );
             ps.items.forEach((x, i) =>
                 lines.push(`${ps.done[x.id] || `${i + 1}️⃣`} <i>${E(x.section)}</i>：${E(x.text)}`),
             );
@@ -776,16 +914,25 @@ ${this.chatLines(pend)}
         lines.push(
             "",
             ps.kind === "inc"
-                ? "<i>记在「陪伴档案」的近况里；不对就直接改那篇笔记</i>"
-                : "<i>想改哪里，直接改「陪伴档案」那篇笔记</i>",
+                ? tr(
+                      "<i>记在「陪伴档案」的近况里；不对就直接改那篇笔记</i>",
+                      "<i>Written to “Recently” in your profile note; if it's wrong, just edit the note</i>",
+                  )
+                : tr(
+                      "<i>想改哪里，直接改「陪伴档案」那篇笔记</i>",
+                      "<i>To change anything, edit your profile note</i>",
+                  ),
         );
         const kb = ps.items
             .filter((x) => !ps.done[x.id])
             .map((x) => {
                 const n = ps.items.indexOf(x) + 1;
                 return [
-                    { text: `✅ 记进档案 ${n}`, callback_data: `co|pok|${x.id}` },
-                    { text: `❌ 不要 ${n}`, callback_data: `co|pno|${x.id}` },
+                    {
+                        text: tr(`✅ 记进档案 ${n}`, `✅ Add ${n}`),
+                        callback_data: `co|pok|${x.id}`,
+                    },
+                    { text: tr(`❌ 不要 ${n}`, `❌ Skip ${n}`), callback_data: `co|pno|${x.id}` },
                 ];
             });
         return { text: lines.join("\n"), markup: kb.length ? { inline_keyboard: kb } : null };
@@ -798,7 +945,7 @@ ${this.chatLines(pend)}
                 c.personaOn = false;
             } else {
                 const f = this.personaFiles()[+id];
-                if (!f) return { toast: "这篇人设找不到了" };
+                if (!f) return { toast: tr("这篇人设找不到了", "That persona note is gone") };
                 c.personaOn = true;
                 c.personaActive = f.path;
             }
@@ -811,30 +958,37 @@ ${this.chatLines(pend)}
             const chk = await this.personaCheck();
             return {
                 toast: chk.blocked
-                    ? `「${chk.name}」写了未成年设定，不会用它，回你的还是默认的那个人`
+                    ? tr(
+                          `「${chk.name}」写了未成年设定，不会用它，回你的还是默认的那个人`,
+                          `“${chk.name}” describes a minor, so it won't be used; the default keeps answering`,
+                      )
                     : cur
-                      ? `现在是「${cur.basename}」`
-                      : "已关掉人设",
+                      ? tr(`现在是「${cur.basename}」`, `Now: “${cur.basename}”`)
+                      : tr("已关掉人设", "Persona off"),
                 edit: m.text,
                 markup: m.markup,
             };
         }
         if (act === "model") {
-            if (!setBackend(c, id)) return { toast: "没有这个后端" };
+            if (!setBackend(c, id)) return { toast: tr("没有这个后端", "No such backend") };
             this.modelChanged();
             await this.plugin.saveSettings();
             const m = this.modelMessage();
-            return { toast: `已切到 ${this.backendLabel()}`, edit: m.text, markup: m.markup };
+            return {
+                toast: tr(`已切到 ${this.backendLabel()}`, `Switched to ${this.backendLabel()}`),
+                edit: m.text,
+                markup: m.markup,
+            };
         }
         const ps = [c.sugs, c.incSugs].find(
             (p) => p && p.items && p.items.some((y) => y.id === id),
         );
         const x = ps?.items.find((y) => y.id === id);
-        if (!ps || !x) return { toast: "这条已经过期了" };
-        if (ps.done[id]) return { toast: "已经处理过了" };
+        if (!ps || !x) return { toast: tr("这条已经过期了", "This one has expired") };
+        if (ps.done[id]) return { toast: tr("已经处理过了", "Already handled") };
         if (act === "pok") {
             const f = this.profileFile();
-            if (!f) return { toast: "没找到陪伴档案" };
+            if (!f) return { toast: tr("没找到陪伴档案", "No profile note found") };
             let ok = false;
             await this.app.vault.process(f, (txt) => {
                 const ls = txt.split("\n");
@@ -847,25 +1001,34 @@ ${this.chatLines(pend)}
                 ok = true;
                 return ls.join("\n");
             });
-            if (!ok) return { toast: `档案里没找到「${x.section}」这一节` };
+            if (!ok)
+                return {
+                    toast: tr(
+                        `档案里没找到「${x.section}」这一节`,
+                        `No “${x.section}” section in the profile`,
+                    ),
+                };
         }
         ps.done[id] = act === "pok" ? "✅" : "❌";
         this.saveSoon();
         if (!ps.lines) ps.lines = this.recentLines(await this.read(c.profilePath));
         const m = this.profileMessage(ps);
         return {
-            toast: act === "pok" ? `已记进「${x.section}」` : "好，不记",
+            toast:
+                act === "pok"
+                    ? tr(`已记进「${x.section}」`, `Added to “${x.section}”`)
+                    : tr("好，不记", "OK, skipped"),
             edit: m.text,
             markup: m.markup || { inline_keyboard: [] },
         };
     }
     async createProfile(): Promise<boolean> {
-        const p = normalizePath(this.cfg.profilePath || "陪伴档案.md");
+        const p = normalizePath(this.cfg.profilePath || COMPANION_DEFAULTS.profilePath);
         if (this.app.vault.getAbstractFileByPath(p)) return false;
         const dir = p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "";
         if (dir && !this.app.vault.getAbstractFileByPath(dir))
             await this.app.vault.createFolder(dir);
-        await this.app.vault.create(p, PROFILE_TEMPLATE);
+        await this.app.vault.create(p, PROFILE_TEMPLATE());
         return true;
     }
 
@@ -938,7 +1101,15 @@ ${this.chatLines(pend)}
         }
         c.last = Date.now();
         this.saveSoon();
-        return r.html + (idleLong ? "\n\n<i>（还在对话模式，说「退出」回到记录模式）</i>" : "");
+        return (
+            r.html +
+            (idleLong
+                ? tr(
+                      "\n\n<i>（还在对话模式，说「退出」回到记录模式）</i>",
+                      "\\n\\n<i>(Still in chat mode; send /record to go back to recording)</i>",
+                  )
+                : "")
+        );
     }
     /** 每半分钟：自动进入的对话超时了就收尾、说一声；周日到点更新档案（到点时电脑在睡觉，醒来 90 分钟内补）。 */
     async tick(): Promise<void> {
@@ -949,7 +1120,10 @@ ${this.chatLines(pend)}
             const ended = await this.chatEnd();
             if (ended && ended.n) {
                 await this.send(
-                    `📝 ${cfg.chatIdleMin} 分钟没说话，我先回到记录模式啦 ${this.m}\n想接着聊就再找我`,
+                    tr(
+                        `📝 ${cfg.chatIdleMin} 分钟没说话，我先回到记录模式啦 ${this.m}\n想接着聊就再找我`,
+                        `📝 No messages for ${cfg.chatIdleMin} minutes, so I'm back in record mode ${this.m}\nCome find me if you want to keep talking`,
+                    ),
                 );
             }
         }
@@ -1041,48 +1215,97 @@ ${this.chatLines(pend)}
                 .split("\n")
                 .map((x) => x.trim())
                 .filter(Boolean);
-            lines.push(this.esc(replies.length ? pick(replies) : "收到 🫶"));
+            lines.push(this.esc(replies.length ? pick(replies) : tr("收到 🫶", "Got it 🫶")));
         } else {
             const st = await this.todayStatus();
             if (q.kind === "echo") {
-                lines.push(`${this.esc(word.repeat(Math.min(n + 1, 7)))}！${this.m}`);
+                lines.push(
+                    `${this.esc(word.repeat(Math.min(n + 1, 7)))}${tr("！", "! ")}${this.m}`,
+                );
                 lines.push(
                     pick([
-                        `听到「${this.esc(word)}」就知道你心情不错 😆`,
-                        "收到一只开心的你 ✨",
-                        "今天是有什么好事吗？👀",
-                        "听起来很有精神 💚",
-                        "开心就多说两声，我都接着 🫶",
+                        tr(
+                            `听到「${this.esc(word)}」就知道你心情不错 😆`,
+                            `“${this.esc(word)}” means you're in a good mood 😆`,
+                        ),
+                        tr("收到一只开心的你 ✨", "One happy you, received ✨"),
+                        tr("今天是有什么好事吗？👀", "Did something good happen today? 👀"),
+                        tr("听起来很有精神 💚", "You sound full of energy 💚"),
+                        tr(
+                            "开心就多说两声，我都接着 🫶",
+                            "Say it as many times as you like, I'm here 🫶",
+                        ),
                     ]),
                 );
                 if (st.doing.length)
-                    lines.push(`⭐ 一边做「${short(st.doing[0])}」一边开心，状态很可以`);
-                else if (st.lastDone) lines.push(`🎉 是因为刚搞定「${short(st.lastDone)}」吗`);
+                    lines.push(
+                        tr(
+                            `⭐ 一边做「${short(st.doing[0])}」一边开心，状态很可以`,
+                            `⭐ Happy while working on “${short(st.doing[0])}”, nice`,
+                        ),
+                    );
+                else if (st.lastDone)
+                    lines.push(
+                        tr(
+                            `🎉 是因为刚搞定「${short(st.lastDone)}」吗`,
+                            `🎉 Is it because you just finished “${short(st.lastDone)}”?`,
+                        ),
+                    );
                 else if (st.done >= 5)
-                    lines.push(`💪 今天已经做完 ${st.done} 件了，开心得理直气壮`);
+                    lines.push(
+                        tr(
+                            `💪 今天已经做完 ${st.done} 件了，开心得理直气壮`,
+                            `💪 ${st.done} things done today, you've earned it`,
+                        ),
+                    );
             } else {
                 lines.push(
                     h < 5
-                        ? pick(["这么晚还在呀 🌙", "还没睡呀，夜猫子 🦉"])
+                        ? pick([
+                              tr("这么晚还在呀 🌙", "Still up this late 🌙"),
+                              tr("还没睡呀，夜猫子 🦉", "Not asleep yet, night owl 🦉"),
+                          ])
                         : h < 11
-                          ? pick(["早呀 ☀️", "早上好 🌤"])
+                          ? pick([tr("早呀 ☀️", "Morning ☀️"), tr("早上好 🌤", "Good morning 🌤")])
                           : h < 14
-                            ? "中午好 🍚"
+                            ? tr("中午好 🍚", "Hi, lunchtime 🍚")
                             : h < 18
-                              ? pick(["下午好 ☕️", "来啦 🙌"])
-                              : pick(["晚上好 🌙", "今天辛苦啦 🫶"]),
+                              ? pick([
+                                    tr("下午好 ☕️", "Good afternoon ☕️"),
+                                    tr("来啦 🙌", "Hey there 🙌"),
+                                ])
+                              : pick([
+                                    tr("晚上好 🌙", "Good evening 🌙"),
+                                    tr("今天辛苦啦 🫶", "Long day, well done 🫶"),
+                                ]),
                 );
-                if (st.doing.length) lines.push(`⭐ 你在做「${short(st.doing[0])}」`);
-                if (st.done) lines.push(`✅ 今天已经做完 ${st.done} 件了`); // 打招呼不提还剩多少，免得有压力
+                if (st.doing.length)
+                    lines.push(
+                        tr(
+                            `⭐ 你在做「${short(st.doing[0])}」`,
+                            `⭐ You're working on “${short(st.doing[0])}”`,
+                        ),
+                    );
+                if (st.done)
+                    lines.push(tr(`✅ 今天已经做完 ${st.done} 件了`, `✅ ${st.done} done today`)); // 打招呼不提还剩多少，免得有压力
                 if (h < 5)
                     lines.push(
-                        pick(["别熬太狠，困了就说一声「睡了」😴", "今天的事可以明天再接着来 🌙"]),
+                        pick([
+                            tr("别熬太狠，困了就说一声「睡了」😴", "Don't stay up too late 😴"),
+                            tr(
+                                "今天的事可以明天再接着来 🌙",
+                                "Today's things can wait until tomorrow 🌙",
+                            ),
+                        ]),
                     );
                 lines.push(
                     pick([
-                        "想聊什么都可以 💬",
-                        "我在，随时说 💬",
-                        `有事说事，没事打个招呼也行 ${this.m}`,
+                        tr("想聊什么都可以 💬", "Happy to talk about anything 💬"),
+                        tr("我在，随时说 💬", "I'm here whenever 💬"),
+                        tr(
+                            `有事说事，没事打个招呼也行 ${this.m}`,
+                            `Say what's on your mind, or just say hi ${this.m}`,
+                        ),
                     ]),
                 );
             }
@@ -1101,9 +1324,14 @@ ${this.chatLines(pend)}
             return null;
         }
         const t = s.replace(FEEL_SKIP, "");
-        if (FEEL_RE.test(t)) return "low";
+        if (FEEL_RE.test(t) || FEEL_RE_EN.test(t)) return "low";
         const low = t.toLowerCase();
-        if (HAPPY_RE.test(t) || this.happyWords().some((w) => low.includes(w))) return "happy";
+        if (
+            HAPPY_RE.test(t) ||
+            HAPPY_RE_EN.test(t) ||
+            this.happyWords().some((w) => low.includes(w))
+        )
+            return "happy";
         return null;
     }
 }

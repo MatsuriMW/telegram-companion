@@ -47,7 +47,7 @@ describe("FallbackRunner", () => {
         const f = fake(["cli", "openai"]);
         await assert.rejects(
             new FallbackRunner().run("cli", "openai", f.call),
-            /cli down；备用后端也没连上：openai down/,
+            /cli down; the fallback backend failed too: openai down/,
         );
     });
 

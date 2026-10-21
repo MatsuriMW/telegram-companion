@@ -1,5 +1,6 @@
 import type TGInbox from "../main";
 import { notifyPlugin, spiralPlugin } from "../integrations";
+import { isZh, tr } from "../i18n";
 
 // 指令表：/help 回的那段，和注册到 Telegram「/」菜单里的那几条。
 // 只列在这台设备上真的能用的：陪伴没开就只有收件箱的指令；依赖「螺旋日程」「任务提醒」的要装了才出现。
@@ -21,39 +22,109 @@ function available(plugin: TGInbox): Availability {
 export function telegramCommands(plugin: TGInbox): { command: string; description: string }[] {
     const a = available(plugin);
     const out: { command: string; description: string }[] = [];
-    if (a.spiral) out.push({ command: "now", description: "🌀 今天的螺旋日程" });
+    if (a.spiral)
+        out.push({
+            command: "now",
+            description: tr("🌀 今天的螺旋日程", "🌀 Today's spiral schedule"),
+        });
     if (a.companion) {
         out.push(
-            { command: "summary", description: "🌙 今天做了什么（不收工）" },
-            { command: "chat", description: "💬 进入对话模式" },
-            { command: "record", description: "📝 回到记录模式" },
-            { command: "mode", description: "🔀 现在是哪种模式" },
+            {
+                command: "summary",
+                description: tr(
+                    "🌙 今天做了什么（不收工）",
+                    "🌙 What I did today (without ending the day)",
+                ),
+            },
+            { command: "chat", description: tr("💬 进入对话模式", "💬 Start chat mode") },
+            { command: "record", description: tr("📝 回到记录模式", "📝 Back to record mode") },
+            { command: "mode", description: tr("🔀 现在是哪种模式", "🔀 Which mode is on") },
         );
     }
     if (a.notify) {
         out.push(
-            { command: "train", description: "🏋️ 今天练什么" },
-            { command: "stale", description: "🐢 拖了好几天的事" },
-            { command: "cards", description: "🃏 今天到期的闪卡" },
-            { command: "week", description: "🧭 这周做了什么（周洞察）" },
+            { command: "train", description: tr("🏋️ 今天练什么", "🏋️ Today's workout") },
+            {
+                command: "stale",
+                description: tr("🐢 拖了好几天的事", "🐢 Things put off for days"),
+            },
+            { command: "cards", description: tr("🃏 今天到期的闪卡", "🃏 Flashcards due today") },
+            {
+                command: "week",
+                description: tr("🧭 这周做了什么（周洞察）", "🧭 What I did this week"),
+            },
         );
     }
     if (a.companion) {
         out.push(
-            { command: "me", description: "🪞 你现在对我的了解" },
-            { command: "profile", description: "🔄 现在更新对我的了解" },
-            { command: "model", description: "🧠 看 / 切换背后的模型" },
-            { command: "persona", description: "🎭 看 / 切换人设" },
+            { command: "me", description: tr("🪞 你现在对我的了解", "🪞 What you know about me") },
+            {
+                command: "profile",
+                description: tr("🔄 现在更新对我的了解", "🔄 Update what you know about me"),
+            },
+            {
+                command: "model",
+                description: tr("🧠 看 / 切换背后的模型", "🧠 See or switch the model"),
+            },
+            {
+                command: "persona",
+                description: tr("🎭 看 / 切换人设", "🎭 See or switch the persona"),
+            },
         );
     }
     out.push(
-        { command: "task", description: "☑️ 记一条待办：/task 内容" },
-        { command: "help", description: "📮 我能做的事" },
+        {
+            command: "task",
+            description: tr("☑️ 记一条待办：/task 内容", "☑️ Add a to-do: /task text"),
+        },
+        { command: "help", description: tr("📮 我能做的事", "📮 What I can do") },
     );
     return out;
 }
 
 export function helpHtml(plugin: TGInbox): string {
+    return isZh() ? helpZh(plugin) : helpEn(plugin);
+}
+
+// English help: slash commands only. The Chinese phrases (睡了, 对话模式 …) still work but are not listed.
+function helpEn(plugin: TGInbox): string {
+    const a = available(plugin);
+    const m = plugin.companion.m;
+    if (!a.companion) {
+        return `📮 <b>What I can do</b>\n\nEverything you send goes into today's daily note.\n/task text adds a to-do`;
+    }
+    const lines = [
+        `${m} <b>What I can do</b>`,
+        "",
+        "🔀 <b>Two modes</b>",
+        "📝 Record mode (default): everything you send is saved",
+        "💬 Chat mode: I answer every message, and the chat is not saved",
+        "· /chat starts it, /record goes back",
+        "· Replying to me, greeting me, or sounding upset or excited also starts it; after a while of silence I go back to recording",
+        "",
+        "⌨️ <b>Commands</b>",
+    ];
+    if (a.spiral) lines.push("/now today's spiral schedule");
+    lines.push("/summary what you did today", "/mode which mode is on");
+    if (a.notify) {
+        lines.push(
+            "/train today's workout",
+            "/stale things put off for days (with buttons)",
+            "/cards flashcards due today",
+            "/week what you did this week",
+        );
+    }
+    lines.push(
+        "/me what I know about you",
+        "/profile update it now (otherwise every Sunday, and after longer chats)",
+        "/model see which model is used, switch with buttons",
+        "/persona have me play a character, or switch",
+        "/task text adds a to-do",
+    );
+    return lines.join("\n");
+}
+
+function helpZh(plugin: TGInbox): string {
     const a = available(plugin);
     const m = plugin.companion.m;
     if (!a.companion) {

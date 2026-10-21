@@ -1,12 +1,12 @@
 # Telegram Companion
 
-[中文说明](README.zh-CN.md) · [Getting started guide (Chinese)](docs/上手指南.md)
+[Getting started guide](docs/getting-started.md) · [中文说明](README.zh-CN.md) · [上手指南](docs/上手指南.md)
 
 A Telegram bot for your Obsidian vault that does two things. Everything you send it lands in today's daily note, and when you want to talk, it answers as a friend who has read your recent notes. It keeps a small profile note about you that grows over time, and you choose which model sits behind it: Claude Code CLI, the Anthropic API, or any OpenAI-compatible endpoint, including a local Ollama.
 
 It is a modified version of the community plugin [Telegram Inbox](https://github.com/icealtria/obsidian-telegram-inbox), which saves messages sent to your own Telegram bot into your daily note. This version adds a character on the other end of the inbox who has read your notes. It can see what you are doing today, what you have been busy with all week and what you plan to do next. So when you say "I'm exhausted" it does not answer with a generic "hang in there", and when you say "done!" it knows what you finished.
 
-The settings and the bot's built-in messages are in Chinese. The language of the model's replies is a setting.
+The settings and the bot's built-in messages follow Obsidian's language (Chinese or English). The language of the model's replies is a separate setting, English by default.
 
 ## What it does
 
@@ -31,7 +31,7 @@ The settings and the bot's built-in messages are in Chinese. The language of the
 
 **Right: used together with [Nautilus Spiral](https://github.com/MatsuriMW/nautilus-spiral).** At a few fixed times a day it sends today's spiral to your phone: how much of the day is gone, how much time is left, whether the to-dos still fit, and what to do next.
 
-Both are real conversations from the author's own use, originally in Chinese and translated here ([original screenshots](README.zh-CN.md#用起来是什么样)). In chat mode the bot replies in whatever language you write in; the Nautilus Spiral push is currently in Chinese only.
+Both are real conversations from the author's own use, originally in Chinese and translated here ([original screenshots](README.zh-CN.md#用起来是什么样)). The model replies in the language set under **Reply language**; the Nautilus Spiral push is currently in Chinese only.
 
 ## Installation
 
@@ -46,7 +46,7 @@ Desktop only. The bot runs inside Obsidian on your computer, so Obsidian has to 
 2. Open the plugin settings. A **Getting started** checklist at the top ticks off each step as you do it. Paste the token into **Bot token**; the checklist shows the bot's name once it is connected.
 3. **Pair**: the checklist shows a 6-digit code. Open your bot in Telegram, tap Start and send it the code. Your account is then on the allowlist, and only accounts on the allowlist are answered. You can also type Telegram usernames (without `@`) or numeric IDs into the allowlist yourself.
 4. Send the bot any text, photo or link. It is written into today's daily note. The folder and date format follow the Daily notes core plugin (or Periodic Notes).
-5. For the companion part, pick a model backend in the section labelled 背后的模型 (see [Model backends](#model-backends)). The test button in that section confirms the connection.
+5. For the companion part, pick a backend in the **Model** section (see [Model backends](#model-backends)). The test button in that section confirms the connection.
 6. Send `/chat` to start talking and `/record` to go back to capturing. `/help` lists every command.
 
 ### Two modes
