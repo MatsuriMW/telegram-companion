@@ -99,7 +99,7 @@ Chat replies, summaries and profile updates call a large language model. Choose 
 
 You can fill in all three and switch at any time, in the settings or by sending `/model` in Telegram.
 
-**Fallback backend.** Pick a second backend under 备用后端 and the bot keeps answering when the first one fails, for example when a subscription's usage limit is reached, a request times out, or a login expires. The failed request is retried once on the fallback, and the reply ends with a line saying which model answered and why the first one did not. For the next 10 minutes requests go straight to the fallback, then the first backend is tried again.
+**Fallback backend.** Pick a second backend under Fallback backend (备用后端) and fill in its settings right below it, and the bot keeps answering when the first one fails, for example when a subscription's usage limit is reached, a request times out, or a login expires. The failed request is retried once on the fallback, and the reply ends with a line saying which model answered and why the first one did not. For the next 10 minutes requests go straight to the fallback, then the first backend is tried again. For example, use the Claude Code CLI as the backend and, as the fallback, OpenAI-compatible with DeepSeek picked as the address, plus a DeepSeek key and model name.
 
 **Where your data goes.** For each reply the plugin sends your profile note, the persona note and a digest of the last week of daily notes (task lines and top-level items, no attachments) to the model service you chose (or to the fallback backend, when one is set and it answered), and to no one else. API keys are stored in the plugin's own `data.json`. If your vault is synced to a public place, exclude that file.
 

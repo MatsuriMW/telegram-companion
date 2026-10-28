@@ -361,99 +361,103 @@ export function renderCompanionSettings(
                 redraw();
             });
         });
-    if (cc.backend === "cli") {
-        text(
-            tr("　claude 命令行路径", "　Path to the claude CLI"),
-            tr(
-                "要先装好并登录 Claude Code；用的是命令行自己的登录，不用填 key",
-                "Install Claude Code and log in first; it uses the CLI's own login, so no key is needed",
-            ),
-            "cliPath",
-            "~/.local/bin/claude",
-        );
-        const known = CLI_MODELS.includes(cc.cliModel);
-        new Setting(containerEl)
-            .setName(tr("　模型", "　Model"))
-            .setDesc(
+    // 每种后端自己的参数：主后端和备用后端都在各自下面填
+    const fields = (b: Backend) => {
+        if (b === "cli") {
+            text(
+                tr("　claude 命令行路径", "　Path to the claude CLI"),
                 tr(
-                    "可以选别名，也可以在右边填完整的模型名；空着用命令行的默认模型",
-                    "Pick an alias or type a full model name on the right; empty uses the CLI's default",
+                    "要先装好并登录 Claude Code；用的是命令行自己的登录，不用填 key",
+                    "Install Claude Code and log in first; it uses the CLI's own login, so no key is needed",
                 ),
-            )
-            .addDropdown((d) => {
-                for (const m of CLI_MODELS) d.addOption(m, m || tr("默认", "default"));
-                if (!known) d.addOption(cc.cliModel, cc.cliModel);
-                d.setValue(cc.cliModel).onChange(async (v) => {
-                    cc.cliModel = v;
-                    await save();
-                    redraw();
-                });
-            })
-            .addText((t) =>
-                t
-                    .setPlaceholder(tr("完整模型名", "Full model name"))
-                    .setValue(known ? "" : cc.cliModel)
-                    .onChange(async (v) => {
-                        cc.cliModel = v.trim();
-                        await save();
-                    }),
+                "cliPath",
+                "~/.local/bin/claude",
             );
-    } else if (cc.backend === "anthropic") {
-        text(
-            "　API key",
-            tr(
-                "存在本插件的 data.json 里；库要是同步到别处，记得别把这个文件公开",
-                "Stored in this plugin's data.json; if your vault syncs somewhere, keep that file private",
-            ),
-            "anthropicKey",
-            "sk-ant-…",
-            true,
-        );
-        text(tr("　模型", "　Model"), "", "anthropicModel", "claude-sonnet-5-5");
-    } else {
-        new Setting(containerEl)
-            .setName(tr("　接口地址", "　API address"))
-            .setDesc(
-                tr(
-                    "到 /v1 为止（不带 /chat/completions）；右边可以选常用的",
-                    "Up to /v1 (without /chat/completions); common ones are on the right",
-                ),
-            )
-            .addText((t) =>
-                t
-                    .setPlaceholder("https://…/v1")
-                    .setValue(cc.openaiBase)
-                    .onChange(async (v) => {
-                        cc.openaiBase = v.trim();
+            const known = CLI_MODELS.includes(cc.cliModel);
+            new Setting(containerEl)
+                .setName(tr("　模型", "　Model"))
+                .setDesc(
+                    tr(
+                        "可以选别名，也可以在右边填完整的模型名；空着用命令行的默认模型",
+                        "Pick an alias or type a full model name on the right; empty uses the CLI's default",
+                    ),
+                )
+                .addDropdown((d) => {
+                    for (const m of CLI_MODELS) d.addOption(m, m || tr("默认", "default"));
+                    if (!known) d.addOption(cc.cliModel, cc.cliModel);
+                    d.setValue(cc.cliModel).onChange(async (v) => {
+                        cc.cliModel = v;
                         await save();
-                    }),
-            )
-            .addDropdown((d) => {
-                d.addOption("", tr("常用服务…", "Common services…"));
-                for (const [url, name] of OPENAI_PRESETS) d.addOption(url, name);
-                d.onChange(async (v) => {
-                    if (!v) return;
-                    cc.openaiBase = v;
-                    await save();
-                    redraw();
+                        redraw();
+                    });
+                })
+                .addText((t) =>
+                    t
+                        .setPlaceholder(tr("完整模型名", "Full model name"))
+                        .setValue(known ? "" : cc.cliModel)
+                        .onChange(async (v) => {
+                            cc.cliModel = v.trim();
+                            await save();
+                        }),
+                );
+        } else if (b === "anthropic") {
+            text(
+                "　API key",
+                tr(
+                    "存在本插件的 data.json 里；库要是同步到别处，记得别把这个文件公开",
+                    "Stored in this plugin's data.json; if your vault syncs somewhere, keep that file private",
+                ),
+                "anthropicKey",
+                "sk-ant-…",
+                true,
+            );
+            text(tr("　模型", "　Model"), "", "anthropicModel", "claude-sonnet-5-5");
+        } else {
+            new Setting(containerEl)
+                .setName(tr("　接口地址", "　API address"))
+                .setDesc(
+                    tr(
+                        "到 /v1 为止（不带 /chat/completions）；右边可以选常用的",
+                        "Up to /v1 (without /chat/completions); common ones are on the right",
+                    ),
+                )
+                .addText((t) =>
+                    t
+                        .setPlaceholder("https://…/v1")
+                        .setValue(cc.openaiBase)
+                        .onChange(async (v) => {
+                            cc.openaiBase = v.trim();
+                            await save();
+                        }),
+                )
+                .addDropdown((d) => {
+                    d.addOption("", tr("常用服务…", "Common services…"));
+                    for (const [url, name] of OPENAI_PRESETS) d.addOption(url, name);
+                    d.onChange(async (v) => {
+                        if (!v) return;
+                        cc.openaiBase = v;
+                        await save();
+                        redraw();
+                    });
                 });
-            });
-        text(
-            "　API key",
-            tr(
-                "本机的 Ollama 可以空着。存在本插件的 data.json 里",
-                "Can be empty for a local Ollama. Stored in this plugin's data.json",
-            ),
-            "openaiKey",
-            "sk-…",
-            true,
-        );
-        text(
-            tr("　模型", "　Model"),
-            tr("照那家服务的文档填模型名", "The model name from that service's docs"),
-            "openaiModel",
-        );
-    }
+            text(
+                "　API key",
+                tr(
+                    "本机的 Ollama 可以空着。存在本插件的 data.json 里",
+                    "Can be empty for a local Ollama. Stored in this plugin's data.json",
+                ),
+                "openaiKey",
+                "sk-…",
+                true,
+            );
+            text(
+                tr("　模型", "　Model"),
+                tr("照那家服务的文档填模型名", "The model name from that service's docs"),
+                "openaiModel",
+            );
+        }
+    };
+    fields(cc.backend);
     // 备用后端：主后端报错时自动换过去重试一次
     const others = (Object.keys(BACKEND_NAMES) as Backend[]).filter((k) => k !== cc.backend);
     const picked = cc.fallback && cc.fallback !== cc.backend ? cc.fallback : "";
@@ -467,8 +471,8 @@ export function renderCompanionSettings(
                   )
                 : "") +
                 tr(
-                    "上面的后端报错时（额度用完、超时、登录失效），自动用备用的重试一次，回复末尾会注明这次是谁回的；之后 10 分钟直接走备用。用到备用时，日记摘要和陪伴档案也会发给备用的那家服务。备用后端的参数要先填好：把「用哪个后端」切过去填完，再切回来",
-                    "When the backend above fails (quota, timeout, expired login), it retries once with the fallback and notes who answered; for the next 10 minutes it goes straight to the fallback. Your daily-note summary and profile are then sent to that service too. Set up the fallback first: switch Backend to it, fill it in, then switch back",
+                    "上面的后端报错时（额度用完、超时、登录失效），自动用备用的重试一次，回复末尾会注明这次是谁回的；之后 10 分钟直接走备用。用到备用时，日记摘要和陪伴档案也会发给备用的那家服务。选好后在下面填它的参数，比如选 OpenAI 兼容接口、接口地址选 DeepSeek，再填 key 和模型名",
+                    "When the backend above fails (quota, timeout, expired login), it retries once with the fallback and notes who answered; for the next 10 minutes it goes straight to the fallback. Your daily-note summary and profile are then sent to that service too. Fill in its settings below once picked, e.g. OpenAI-compatible with DeepSeek as the address, then a key and a model name",
                 ),
         )
         .addDropdown((d) => {
@@ -485,6 +489,7 @@ export function renderCompanionSettings(
                 redraw();
             });
         });
+    if (picked) fields(picked);
     const fb = fallbackBackend(cc);
     const tryOn = (b: ButtonComponent, backend: Backend, label: string) =>
         b.setButtonText(label).onClick(async () => {
@@ -523,7 +528,8 @@ export function renderCompanionSettings(
             ),
         )
         .addButton((b) => tryOn(b, cc.backend, tr("发一句测试", "Send a test")));
-    if (fb) test.addButton((b) => tryOn(b, fb, tr("测备用", "Test fallback")));
+    // 刚在上面填完备用的参数还没重画，按钮也要在；没填全时点了会说缺什么
+    if (picked) test.addButton((b) => tryOn(b, picked, tr("测备用", "Test fallback")));
 
     // ---- 说明
     const help = containerEl.createDiv({ cls: "tg-companion-help" });
