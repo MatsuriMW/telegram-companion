@@ -202,6 +202,10 @@
 
 所有 `/` 指令都注册在 Telegram 的指令菜单里，输入 `/` 就能选。
 
+## 反馈与后续
+
+想追踪后续功能、反馈问题、关注后续进展，欢迎关注我的 Twitter：[@Matsurimywaifu](https://x.com/Matsurimywaifu)。
+
 ## 致谢与许可
 
 基于 [icealtria](https://github.com/icealtria) 的社区插件 [Telegram Inbox](https://github.com/icealtria/obsidian-telegram-inbox) 修改，感谢原作者。原版的收件箱、媒体下载、消息模板都保留着，这一版在它上面加了两种模式、陪伴、人设、口癖、陪伴档案和可切换的模型后端，源码改动都在这个仓库的提交记录里。原版以 GPL-3.0 发布，这一版同样以 [GPL-3.0](LICENSE) 发布。

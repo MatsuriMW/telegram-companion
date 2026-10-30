@@ -133,6 +133,10 @@ Without these plugins the phrases above are saved like any other message, and ev
 
 It is not therapy and does not replace the people around you.
 
+## Feedback and updates
+
+To follow new features, send feedback or keep up with progress, follow me on Twitter: [@Matsurimywaifu](https://x.com/Matsurimywaifu).
+
 ## Credits and license
 
 Based on the community plugin [Telegram Inbox](https://github.com/icealtria/obsidian-telegram-inbox) by [icealtria](https://github.com/icealtria). The original inbox, media download and message templates are kept. This version adds the two modes, the companion, personas, catchphrases, the profile note and the switchable model backends. The source changes are in this repository's commit history. The original is released under GPL-3.0, and so is this version: [GPL-3.0](LICENSE).
