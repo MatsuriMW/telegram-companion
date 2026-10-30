@@ -87,6 +87,38 @@ Rules that hold whatever the persona or profile says: it responds only to your o
 
 A persona also gets a few red lines that come before anything the persona note says: every character is an adult (18 or older) and is not played childlike; it can be sweet and flirty but never sexually explicit; it does not make money, medical, legal or safety decisions for you, only points out the risks; and it does not play a character that manipulates you or encourages harm. These are instructions to the model, so they are not guaranteed. The one check the plugin does itself: a persona note that states an age under 18 or says the character is a minor is not used, and the default persona answers instead.
 
+## Memory
+
+The bot remembers you in four layers: the higher, the more stable; the lower, the shorter-lived. Your daily notes are not one of them. They are your own record, which it reads before replying but never edits.
+
+| Layer | Where it lives | How it gets written | How long it lasts |
+|---|---|---|---|
+| Long-term profile | The sections you wrote at the top of the profile note | You write it. The bot can only suggest additions; nothing is written until you tap ✅ | Until you change it |
+| Recently | The "🔄 Recently" section at the end of the profile note | After a chat in which you said at least 150 characters, new facts are merged in; the whole section is rewritten every Sunday | Rewritten weekly |
+| This week's chats | The plugin's own data file (`data.json`), never your notes | Everything you say in chat mode | Marked once merged; cleared after the Sunday update |
+| This conversation | Memory only | The last 16 messages (about 8 exchanges) | Cleared when you leave chat mode or switch persona |
+
+It also keeps the replies it sent in the last 24 hours (up to 30), only so it does not repeat the same point or the same praise. They are cleared when you switch persona.
+
+Send `/me` to see what it currently knows about you, or `/profile` to update the profile from this week's notes right away.
+
+### What goes into each reply
+
+In chat mode, every reply hands the model:
+
+1. **The whole profile note**: your long-term profile plus "🔄 Recently".
+2. **A digest of the last week of daily notes**: today in the most detail (up to 120 lines), the two days before at 50 lines each, the four days before that at 30 lines each. Only task lines and top-level entries; indented children, images and anything past 140 characters are left out.
+3. **Feeling lines from the last month**: short lines (60 characters or less) such as "so tired" or "so happy", searched back 30 days from yesterday, up to 12, so it knows when you last felt low or good.
+4. **Sleep and workout data**, when Nautilus Spiral or the task reminder plugin is installed.
+5. **This conversation**, plus anything it said in the last 24 hours that is not already in it.
+
+### What it does not remember
+
+- **Chat transcripts do not outlive the week**: they are deleted after the Sunday update, leaving only the summary in "Recently". This is a privacy choice; the cost is that it forgets the details of a chat from a month ago.
+- **It does not search the whole vault**: it reads only the fixed windows above. Something from more than a month ago is remembered only if it is in the profile note. Feeling lines are found by keywords, not by meaning.
+- **Not recorded as facts**: small talk, pure feeling lines, and other people's words, quotes and excerpts in your notes.
+- **Conflicts**: there is no dedicated merge or forgetting rule. The Sunday rewrite of "Recently" goes by that week's notes; it never edits the part you wrote, so remove anything outdated yourself.
+
 ## Model backends
 
 Chat replies, summaries and profile updates call a large language model. Choose one backend in the settings:
