@@ -1,7 +1,7 @@
 import { moment, type App, type Vault } from "obsidian";
 import type { TGInboxSettings } from "../settings/types";
 import { insertMessage, insertMessageAtTop, insertMessageAfterHeading } from "../io";
-import { getSavePath } from "../utils/file";
+import { getOrCreateNote, getSavePath } from "../utils/file";
 import type { MessageUpdate } from "../type";
 import { pauseDoingTasks, placeTaskLines } from "./task-zones";
 
@@ -182,6 +182,11 @@ export class VaultWriter {
     async pauseDoing(msg: MessageUpdate): Promise<void> {
         const savedPath = await getSavePath(this.vault, this.settings, msg);
         await pauseDoingTasks(this.app, this.vault, savedPath);
+    }
+
+    /** A custom command's line, appended to the end of a note of its own. */
+    async appendToNote(path: string, content: string): Promise<void> {
+        await insertMessage(this.vault, content, await getOrCreateNote(this.vault, path));
     }
 
     async insertMessageToVault(content: string, msg: MessageUpdate): Promise<void> {

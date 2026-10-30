@@ -1,6 +1,6 @@
 # Getting started
 
-From nothing to "send *so tired*, get a reply that has read your daily notes" in about 15 minutes. After the first three steps you have a working inbox; the rest sets up the companion.
+From nothing to "send *I want to ask you: what have I been busy with?*, get a reply that has read your daily notes" in about 15 minutes. After the first three steps you have a working inbox; the rest sets up the companion.
 
 The settings tab has a **Getting started** checklist at the top that ticks off each step as you do it, so you can also just follow that.
 
@@ -79,7 +79,7 @@ Try these in Telegram:
 | `/summary` | What you got done today, and which thing to start with tomorrow |
 | `/model` | The model in use, with buttons to switch |
 
-Sounding upset or excited ("so tired", "nailed it") or replying to one of its messages also starts chat mode; after a while of silence it goes back to recording on its own.
+Starting a message with a chat phrase ("I want to ask you: …", "let's talk …") or replying to one of its messages also starts chat mode; after a while of silence it goes back to recording on its own. Moods such as "so tired" or "nailed it" do not start it and are saved as usual. The phrases are under **Phrases that start chat mode** in the settings, and you can add symbols of your own.
 
 If you said enough in a chat, a little after it ends you get "🧩 I noted a few things from our chat", saying what it added to the **Recently** section of your profile. If it got something wrong, edit the note.
 

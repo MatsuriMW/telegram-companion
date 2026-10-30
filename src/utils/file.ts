@@ -79,6 +79,13 @@ async function getDailyNoteFile(settings: TGInboxSettings, msg: MessageUpdate): 
     return file;
 }
 
+/** A note by its path (".md" added when missing), created along with its folders if it does not exist. */
+export async function getOrCreateNote(vault: Vault, path: string): Promise<TFile> {
+    let p = normalizePath(path);
+    if (!p.endsWith(".md")) p += ".md";
+    return vault.getFileByPath(p) ?? (await createTargetFile(vault, p));
+}
+
 async function createTargetFile(vault: Vault, filePath: string): Promise<TFile> {
     console.debug(`Creating target file: ${filePath}`);
 

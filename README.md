@@ -2,6 +2,14 @@
 
 [Getting started guide](docs/getting-started.md) · [中文说明](README.zh-CN.md) · [上手指南](docs/上手指南.md)
 
+**Contents**
+
+- Start here: [What it does](#what-it-does) · [Screenshots](#screenshots) · [Installation](#installation) · [Requirements](#requirements)
+- Using it: [Setup](#usage) · [Two modes](#two-modes) · [Commands](#commands) · [Custom commands](#custom-commands) · [Tasks](#tasks) · [Persona, catchphrases and the profile note](#persona-catchphrases-and-the-profile-note)
+- How it remembers: [Memory](#memory) · [What goes into each reply](#what-goes-into-each-reply) · [What it does not remember](#what-it-does-not-remember)
+- Setup and extras: [Model backends](#model-backends) · [Works with Nautilus Spiral](#works-with-nautilus-spiral) · [Network use, accounts and local programs](#network-use-accounts-and-local-programs)
+- More: [Feedback and updates](#feedback-and-updates) · [Credits and license](#credits-and-license)
+
 A Telegram bot for your Obsidian vault that does two things. Everything you send it lands in today's daily note, and when you want to talk, it answers as a friend who has read your recent notes. It keeps a small profile note about you that grows over time, and you choose which model sits behind it: Claude Code CLI, the Anthropic API, or any OpenAI-compatible endpoint, including a local Ollama.
 
 It is a modified version of the community plugin [Telegram Inbox](https://github.com/icealtria/obsidian-telegram-inbox), which saves messages sent to your own Telegram bot into your daily note. This version adds a character on the other end of the inbox who has read your notes. It can see what you are doing today, what you have been busy with all week and what you plan to do next. So when you say "I'm exhausted" it does not answer with a generic "hang in there", and when you say "done!" it knows what you finished.
@@ -54,7 +62,14 @@ Desktop only. The bot runs inside Obsidian on your computer, so Obsidian has to 
 - **Record mode** (default): whatever you send is saved, as in the original inbox.
 - **Chat mode**: it answers every message, following the conversation. Chat messages are not written to the daily note.
 
-Chat mode starts when you send `/chat`, when you send an emotional message, when you send one of your greeting catchphrases, or when you reply to one of its messages. If it started on its own, it returns to record mode after 20 minutes of silence (configurable) and tells you so.
+Chat mode starts only when you clearly want to talk:
+
+- **Send `/chat`, or a message that is just a chat phrase.** The default phrases are "chat mode", "let's talk", "let's chat", "I want to ask you" and "can I ask you" (with Obsidian in Chinese: 对话模式, 让我们来对话吧, 对话一下, 我想问你, 问你个事, 陪我聊聊 and a few more). It stays on until you send `/record`.
+- **Start a message with a chat phrase**, e.g. "I want to ask you: what should I start with tomorrow?". It answers that message right away.
+- **Reply to one of its messages.**
+- **Send a catchphrase that has *Then chat* turned on** (the default greeting has it on).
+
+Edit the phrases under **Phrases that start chat mode** in the settings. Symbols of your own work too: add `??` and send `?? what did I do this week`. Moods do not start chat mode: "so tired" or "nailed it" is saved like any other message, and once you are in chat mode it answers in the matching tone. A chat that started any way other than a whole phrase or `/chat` returns to record mode after 20 minutes of silence (configurable) and tells you so.
 
 ### Commands
 
@@ -69,9 +84,26 @@ Chat mode starts when you send `/chat`, when you send an emotional message, when
 | `/me` | Shows what it currently knows about you | No |
 | `/profile` | Re-reads this week's notes and updates the profile | Updates the profile note |
 | `/task text` | Adds a to-do | Yes |
-| `/help` | Lists the commands | No |
+| `/help` | Lists the commands, your own included | No |
+| Your own triggers | Whatever you set them to do, see [Custom commands](#custom-commands) | Depends |
 
 Most commands also have a Chinese phrase (for example "对话模式" for `/chat`, "睡了" to end the day and get the summary). The full list is in the [Chinese README](README.zh-CN.md).
+
+### Custom commands
+
+The built-in phrases are fixed, such as `?` for today's schedule. Under **Custom commands** in the settings you pick your own triggers (a word, a few letters or a symbol: `!`, `zz`, `idea`, `/idea`) and what each one does:
+
+| Kind | What happens | Example |
+|---|---|---|
+| Same as a built-in command | A message that is just the trigger does what that command does | `zz` ends the day with the summary; `sched` shows today's spiral schedule |
+| Save to a note | The text after the trigger is written to a note, in a format you choose. With no note set, it goes where messages are normally saved (today's daily note) | Trigger `idea`, note `Ideas.md`, format `- {{time}} {{text}}`: sending `idea podcast about sleep` adds `- 14:05 podcast about sleep` to `Ideas.md` |
+| Ask the model | It answers a prompt you wrote, with your profile note and the last week of daily notes at hand. The message is not saved | Trigger `recap`, prompt "From today's note, list what I got done and give me a first step for tomorrow" |
+
+- A trigger made of letters or Chinese characters needs a space or a colon before the text (`idea: text`). A trigger that ends in a symbol can be followed directly (`!buy milk`).
+- In the format, `{{text}}` is the text, `{{time}}` the time the message was sent and `{{date}}` its date. `- [ ] {{text}}` makes a to-do. In a prompt, `{{text}}` is the text after the trigger; without it, the text is added after the prompt.
+- A trigger that starts with `/` and uses only lowercase letters, digits and underscores (`/idea`) also shows up in Telegram's `/` menu. `/help` lists your commands at the end.
+- Custom commands are checked before the built-in phrases, in both modes.
+- Ask the model uses the backend chosen under Model, so it works with your own API key, DeepSeek included (see [Model backends](#model-backends)).
 
 ### Tasks
 
@@ -130,6 +162,8 @@ Chat replies, summaries and profile updates call a large language model. Choose 
 | OpenAI-compatible endpoint | A base URL, a key and a model name. DeepSeek, OpenAI, OpenRouter and a local Ollama all work | Other providers, or keeping data on your computer with Ollama |
 
 You can fill in all three and switch at any time, in the settings or by sending `/model` in Telegram.
+
+**Using your own DeepSeek key.** Choose OpenAI-compatible endpoint, pick DeepSeek in the address dropdown, paste your key and enter the model name from DeepSeek's docs. Press the test button to check. Other providers with an OpenAI-compatible API work the same way with their own address.
 
 **Fallback backend.** Pick a second backend under Fallback backend (备用后端) and fill in its settings right below it, and the bot keeps answering when the first one fails, for example when a subscription's usage limit is reached, a request times out, or a login expires. The failed request is retried once on the fallback, and the reply ends with a line saying which model answered and why the first one did not. For the next 10 minutes requests go straight to the fallback, then the first backend is tried again. For example, use the Claude Code CLI as the backend and, as the fallback, OpenAI-compatible with DeepSeek picked as the address, plus a DeepSeek key and model name.
 

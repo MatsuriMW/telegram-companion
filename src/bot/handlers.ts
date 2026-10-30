@@ -11,6 +11,7 @@ import type TGInbox from "../main";
 import type { Companion } from "../companion/companion";
 import { notifyPlugin, spiralPlugin } from "../integrations";
 import { helpHtml } from "./commands";
+import { askText, builtin, matchCustom, noteLine } from "./custom-commands";
 import { tr } from "../i18n";
 
 async function executePostAction(ctx: Context, settings: TGInboxSettings): Promise<void> {
@@ -207,10 +208,14 @@ export function setupMessageHandlers(
         const co = plugin.companion.on() ? plugin.companion : null;
         const naut = spiralPlugin(app); // 螺旋日程：没装就没有 ?、作息口令、吃饭暂停
         const nn = notifyPlugin(app); // 任务提醒：没装就没有健身、拖延、闪卡、周洞察
-        const said = (msg.text || "").trim();
+        // 自定义命令：「当成内置指令」的，换成那条指令的说法往下照常走
+        const custom = matchCustom(settings.custom_commands, msg.text || "");
+        const alias = custom?.cmd.kind === "alias" ? builtin(custom.cmd.target) : undefined;
+        const said = alias ? alias.says : (msg.text || "").trim();
         const said0 = said.replace(/[!！。.~～…\s]+$/, "");
         const cmd = said.replace(/[!！。.~～?？\s]+$/, "");
         const at = moment(msg.date * 1e3);
+        const chatWord = co?.chatTrigger(said) ?? null; // 用进入对话模式的说法说的
         const dayCmd = SLEEP_RE.test(said0) ? "sleep" : WAKE_RE.test(said0) ? "wake" : null;
         const breakStart = MEAL_RE.test(said0)
             ? "吃饭"
@@ -226,6 +231,39 @@ export function setupMessageHandlers(
                 /睡|眯/.test(naut.settings.breakState.word));
 
         try {
+            // ---- 自定义命令（任何模式下都生效）
+            if (custom?.cmd.kind === "note") {
+                if (!custom.rest) {
+                    await ctx.reply(
+                        tr(
+                            `📌 后面跟上要记的内容：${custom.word} 内容`,
+                            `📌 Put what to save after it: ${custom.word} text`,
+                        ),
+                    );
+                    return;
+                }
+                const line = noteLine(custom.cmd.format, custom.rest, at);
+                if (custom.cmd.path.trim())
+                    await vaultWriter.appendToNote(custom.cmd.path.trim(), line);
+                else await vaultWriter.insertMessageToVault(line, msg);
+                await executePostAction(ctx, settings);
+                return;
+            }
+            if (custom?.cmd.kind === "ask") {
+                if (!co) {
+                    await ctx.reply(
+                        tr(
+                            "💭 这条命令要用模型，先在插件设置里开启陪伴",
+                            "💭 This command needs the model; turn on the companion in the plugin settings first",
+                        ),
+                    );
+                    return;
+                }
+                const ask = askText(custom.cmd.prompt, custom.rest);
+                await withThinking(ctx, THINKING.chat, () => co.askCommand(ask));
+                return;
+            }
+
             // ---- 指令（任何模式下都生效）
             if (/^(?:帮助|怎么用|指令|\/help)$/.test(cmd)) {
                 await ctx.reply(helpHtml(plugin), { parse_mode: "HTML" });
@@ -233,7 +271,7 @@ export function setupMessageHandlers(
             }
             if (co) {
                 const chatCmd = co.chatCommand(said);
-                if (chatCmd === "enter") {
+                if (chatCmd === "enter" || chatWord === "whole") {
                     const was = co.chatActive();
                     await co.chatStart("explicit");
                     await ctx.reply(
@@ -470,14 +508,15 @@ export function setupMessageHandlers(
                 }
 
                 // ---- 两种模式
-                // 这些在任何模式下都当记录：「记 」开头、任务口令、带链接的；自动进入的对话里太长的（多半是贴过来的摘录）
+                // 这些在任何模式下都当记录：「记 」开头、任务口令、带链接的；
+                // 自动进入的对话里太长的（多半是贴过来的摘录），用进入对话的说法开头的除外
                 const inChat = co.chatActive();
                 const noted = /^记[:：\s]/.test(said);
                 const recordish =
                     noted ||
                     /^(?:done|doing|todo|later|now)\b/i.test(said) ||
                     /https?:\/\//.test(said) ||
-                    (inChat !== "explicit" && said.length > 100);
+                    (inChat !== "explicit" && said.length > 100 && chatWord !== "lead");
                 if (noted) content = content.replace(/记[:：\s]+/, "");
                 if (!recordish) {
                     if (inChat) {
@@ -491,18 +530,10 @@ export function setupMessageHandlers(
                         await ctx.reply(quick.html, { parse_mode: "HTML" });
                         return;
                     }
-                    // 情绪话、「聊聊 / 陪我」、回复它的消息：自动进入对话模式
-                    const toBot = !!msg.reply_to_message?.from?.is_bot;
-                    const mood =
-                        co.moodOf(said) ||
-                        (/^(?:聊聊|陪我)/.test(said) ? "low" : toBot ? "chat" : null);
-                    if (mood) {
-                        await co.chatStart("auto", mood);
-                        await chatAnswer(
-                            ctx,
-                            co,
-                            said.replace(/^(?:聊聊|陪我聊聊|陪我)[，,：:\s]*/, "") || said,
-                        );
+                    // 用进入对话的说法开头（「我想问你……」）、回复它的消息：自动进入对话模式
+                    if (chatWord === "lead" || msg.reply_to_message?.from?.is_bot) {
+                        await co.chatStart("auto", co.moodOf(said) || "chat");
+                        await chatAnswer(ctx, co, said);
                         return;
                     }
                 }

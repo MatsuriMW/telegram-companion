@@ -4,6 +4,7 @@ import * as Mustache from "mustache";
 import { ActionAfterReception } from "./settings/types";
 import { getSyncStatus, hasSyncPlugin } from "./utils/sync";
 import { renderCompanionSettings } from "./companion/settings-ui";
+import { renderCustomCommands } from "./settings/custom-commands-ui";
 import { renderSetupChecklist } from "./setup-checklist";
 import { tr } from "./i18n";
 
@@ -216,6 +217,11 @@ export class TGInboxSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             });
+
+        renderCustomCommands(containerEl, this.plugin, () => {
+            window.clearInterval(this.updateId);
+            this.display();
+        });
 
         new Setting(containerEl).setName(tr("进阶", "Advanced")).setHeading();
 

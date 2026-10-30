@@ -64,6 +64,8 @@ export interface CompanionSettings {
     mascot: string;
     quipsOn: boolean;
     quips: Quip[];
+    /** 进入对话模式的说法，逗号隔开：消息以它开头就进入。 */
+    chatWords: string;
     chatIdleMin: number;
     weeklyUpdate: boolean;
     weeklyUpdateAt: string;
@@ -121,6 +123,10 @@ export const COMPANION_DEFAULTS: CompanionSettings = {
     mascot: "✨",
     quipsOn: true,
     quips: DEFAULT_QUIPS,
+    chatWords: tr(
+        "对话模式, 让我们来对话吧, 我们来对话吧, 对话一下, 我想问你, 问你个事, 陪我聊聊, 陪我聊天",
+        "chat mode, let's talk, let's chat, I want to ask you, can I ask you",
+    ),
     chatIdleMin: 20,
     weeklyUpdate: true,
     weeklyUpdateAt: "22:30",

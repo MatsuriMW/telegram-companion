@@ -2,6 +2,22 @@ import { COMPANION_DEFAULTS, type CompanionSettings } from "../companion/types";
 
 export type ActionAfterReception = "react" | "delete";
 
+/** A trigger the user picked, and what it does. */
+export interface CustomCommand {
+    /** Trigger words, separated by commas. One starting with "/" also goes into Telegram's "/" menu. */
+    words: string;
+    /** alias: same as a built-in command · note: save the words after the trigger to a note · ask: ask the model with `prompt`. */
+    kind: "alias" | "note" | "ask";
+    /** For alias: the key of the built-in command (see BUILTINS). */
+    target: string;
+    /** For note: the note to append to; empty = where messages are normally saved. */
+    path: string;
+    /** For note: the line written, with {{text}}, {{time}} and {{date}}. */
+    format: string;
+    /** For ask: what to ask; {{text}} is the words after the trigger. */
+    prompt: string;
+}
+
 export interface TGInboxSettings {
     token: string;
     marker: string;
@@ -31,6 +47,7 @@ export interface TGInboxSettings {
     stamp_time: boolean;
     /** Appended to the first line of a forwarded message (e.g. "#quote"); empty = off. */
     forward_tag: string;
+    custom_commands: CustomCommand[];
     /** The owner's private chat id, recorded on their first message so the bot can message them first. */
     owner_chat_id?: number;
     /** A message has been written into the vault at least once (the setup checklist ticks it off). */
@@ -62,5 +79,6 @@ export const DEFAULT_SETTINGS: TGInboxSettings = {
     as_list_items: false,
     stamp_time: false,
     forward_tag: "",
+    custom_commands: [],
     companion: COMPANION_DEFAULTS,
 };

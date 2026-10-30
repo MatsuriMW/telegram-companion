@@ -136,6 +136,14 @@ export function renderCompanionSettings(
         ),
         "mascot",
     );
+    text(
+        tr("进入对话模式的说法", "Phrases that start chat mode"),
+        tr(
+            "逗号隔开，可以加你自己的符号（比如 ？？）。整句就是其中一个：一直聊到你说「退出」；以它开头、后面还有话：接着回这句话，算自动进入的对话。/chat 和回复它的消息总能进入。情绪话、打招呼不会自动进入",
+            "Separated by commas; symbols of your own (such as ??) work too. A message that is just one of them starts chat mode until you send /record. A message that starts with one gets an answer and starts an automatic chat. /chat and replying to the bot always start it. Moods and greetings do not",
+        ),
+        "chatWords",
+    );
     num(
         tr(
             "自动进入的对话，多少分钟没说话回到记录模式",
@@ -252,8 +260,8 @@ export function renderCompanionSettings(
             t
                 .setTooltip(
                     tr(
-                        "说这个词代表心情好；句子里带着它也会自动进入对话模式",
-                        "This word means you're in a good mood; a message containing it also starts chat mode",
+                        "说这个词代表心情好：对话里它会跟着你高兴，也会学着用这个词回你",
+                        "This word means you're in a good mood: in chat it is happy with you and may use the word back",
                     ),
                 )
                 .setValue(q.happy)
@@ -277,8 +285,8 @@ export function renderCompanionSettings(
     new Setting(containerEl)
         .setDesc(
             tr(
-                "触发词用逗号隔开。「开心」表示你说这个词的时候心情好，句子里带着它也会自动进入对话模式",
-                "Separate trigger words with commas. “Happy” means you're in a good mood when you say the word; a message containing it also starts chat mode",
+                "触发词用逗号隔开。「开心」表示你说这个词的时候心情好，对话里它会跟着你高兴",
+                "Separate trigger words with commas. “Happy” means you're in a good mood when you say the word; in chat it is happy with you",
             ),
         )
         .addButton((b) =>

@@ -1,17 +1,19 @@
 import type TGInbox from "../main";
 import { notifyPlugin, spiralPlugin } from "../integrations";
 import { isZh, tr } from "../i18n";
+import { describe, menuCommands, triggers } from "./custom-commands";
 
 // 指令表：/help 回的那段，和注册到 Telegram「/」菜单里的那几条。
 // 只列在这台设备上真的能用的：陪伴没开就只有收件箱的指令；依赖「螺旋日程」「任务提醒」的要装了才出现。
+// 用户自己设的命令里「/」开头的也注册进菜单。
 
-interface Availability {
+export interface Availability {
     companion: boolean;
     spiral: boolean;
     notify: boolean;
 }
 
-function available(plugin: TGInbox): Availability {
+export function available(plugin: TGInbox): Availability {
     return {
         companion: plugin.companion.on(),
         spiral: !!spiralPlugin(plugin.app),
@@ -79,11 +81,35 @@ export function telegramCommands(plugin: TGInbox): { command: string; descriptio
         },
         { command: "help", description: tr("📮 我能做的事", "📮 What I can do") },
     );
+    for (const c of menuCommands(plugin.settings.custom_commands))
+        if (!out.some((o) => o.command === c.command)) out.push(c);
     return out;
 }
 
 export function helpHtml(plugin: TGInbox): string {
-    return isZh() ? helpZh(plugin) : helpEn(plugin);
+    return (isZh() ? helpZh(plugin) : helpEn(plugin)) + customHelp(plugin);
+}
+
+// 进入对话模式的说法，指令表里列前三个
+function chatWords(plugin: TGInbox): string {
+    return String(plugin.companion.cfg.chatWords || "")
+        .split(/[,，、\n]+/)
+        .map((w) => w.trim())
+        .filter(Boolean)
+        .slice(0, 3)
+        .map((w) => `<code>${plugin.companion.esc(w)}</code>`)
+        .join(" ");
+}
+
+// 用户自己设的命令，列在指令表最后：每条一行，第一个触发词 + 它做什么
+function customHelp(plugin: TGInbox): string {
+    const esc = (s: string) => plugin.companion.esc(s);
+    const lines = (plugin.settings.custom_commands || [])
+        .filter((c) => triggers(c).length)
+        .map((c) => `<code>${esc(triggers(c)[0])}</code> ${esc(describe(c))}`);
+    return lines.length
+        ? `\n\n🧩 <b>${tr("你自己设的命令", "Your own commands")}</b>\n${lines.join("\n")}`
+        : "";
 }
 
 // English help: slash commands only. The Chinese phrases (睡了, 对话模式 …) still work but are not listed.
@@ -100,7 +126,7 @@ function helpEn(plugin: TGInbox): string {
         "📝 Record mode (default): everything you send is saved",
         "💬 Chat mode: I answer every message, and the chat is not saved",
         "· /chat starts it, /record goes back",
-        "· Replying to me, greeting me, or sounding upset or excited also starts it; after a while of silence I go back to recording",
+        `· Starting a message with ${chatWords(plugin)}, or replying to me, also starts it; after a while of silence I go back to recording`,
         "",
         "⌨️ <b>Commands</b>",
     ];
@@ -136,8 +162,8 @@ function helpZh(plugin: TGInbox): string {
         "🔀 <b>两种模式</b>",
         "📝 记录模式（默认）：发什么记什么",
         "💬 对话模式：每句都回你，对话不进日记",
-        "· <code>对话模式</code> /chat 进入，<code>退出</code> /record 回来",
-        "· 说累、说开心、打招呼、「聊聊」开头、回复我的消息，会自动进入；一阵子不说话自动回来",
+        `· ${chatWords(plugin)} /chat 进入，<code>退出</code> /record 回来`,
+        "· 用这些说法开头、后面接着说话，或者回复我的消息，也会进入；一阵子不说话自动回来",
         "· 对话里想记一句：<code>记 明天买牛奶</code>",
         "",
         "⌨️ <b>指令</b>",

@@ -69,9 +69,13 @@ export class TelegramBot {
         });
     }
 
-    start(): void {
-        // Register the "/" menu; only the commands that work with what is installed.
+    /** Register the "/" menu: the commands that work with what is installed, and the user's own. */
+    syncMenu(): void {
         this.bot.api.setMyCommands(telegramCommands(this.plugin)).catch(() => {});
+    }
+
+    start(): void {
+        this.syncMenu();
         this.bot.start().catch((e) => console.error("[telegram-companion] bot stopped", e));
     }
 

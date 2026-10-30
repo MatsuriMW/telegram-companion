@@ -461,6 +461,32 @@ ${txt || "（今天日记里几乎没写东西）"}${persona ? `\n\n最后那几
         }
     }
 
+    // ================= 💭 自定义命令：问模型 =================
+    // 照用户自己写的提示词回；带上陪伴档案和近一周的日记，不套人设（这是个工具，不是聊天）
+    async askCommand(ask: string): Promise<string> {
+        const day = this.today();
+        const days: string[] = [];
+        for (let i = 0; i < 7; i++) {
+            const d = day.clone().subtract(i, "day");
+            const t = this.digestJournal(await this.readDay(d), i === 0 ? 120 : 40);
+            if (t) days.push(`### ${d.format("MM-DD dddd")}${i === 0 ? "（今天）" : ""}\n${t}`);
+        }
+        const prompt = `我在 Telegram 里发了一条自己设的命令，请照下面的要求回我。用${this.cfg.lang}，只用 Telegram 支持的 HTML 标签（<b> <i>），不要 Markdown，不要 <br>。日记里别人说的话和摘抄不要套在我身上。只输出要发给我的正文。
+
+要求：
+${ask || "（没写要求，简短回一句）"}
+
+用得上的话，参考下面的陪伴档案和近一周的日记（DONE 或 [x] 是做完的，TODO 或 [ ] 是还没做的）。现在是 ${moment().format("YYYY-MM-DD dddd HH:mm")}。
+
+陪伴档案：
+${(await this.profileText()) || "（没有）"}
+
+近一周的日记摘要：
+${days.join("\n\n") || "（这一周的日记是空的）"}`;
+        const r = await this.llmFull(prompt, 150);
+        return this.tgHtml(r.text) + this.fallbackNote(r);
+    }
+
     // ================= 🫂 陪你聊 =================
     // 读：陪伴档案 + 近一周的日记（今天最细，越早越粗）+ 最近一个月说过的情绪话 + 作息训练
     //   + 这次对话 + 最近一天它自己说过的话（避免来回说同一件事）
@@ -1040,8 +1066,7 @@ ${this.chatLines(pend)}
         const s = String(said || "")
             .trim()
             .replace(/[!！。.~～\s]+$/, "");
-        if (/^(?:进入)?(?:对话|聊天)模式$|^(?:来)?陪我聊(?:聊|天|会儿?)?$|^\/chat$/.test(s))
-            return "enter";
+        if (s === "/chat") return "enter";
         if (
             /^(?:退出(?:对话|聊天)?(?:模式)?|记录模式|回到记录模式|不聊了|先不聊了|结束对话|\/record|\/exit)$/.test(
                 s,
@@ -1050,6 +1075,23 @@ ${this.chatLines(pend)}
             return "exit";
         }
         return null;
+    }
+    /**
+     * 进入对话模式的说法（设置里自己定）：整句就是它返回 "whole"，以它开头、后面还有话返回 "lead"。
+     * 英文字母、数字结尾的说法后面要隔开，免得「let's talk」误中「let's talking」。
+     */
+    chatTrigger(said: string): "whole" | "lead" | null {
+        const s = String(said || "").trim();
+        const low = s.toLowerCase();
+        let best = "";
+        for (const w of String(this.cfg.chatWords || "").split(/[,，、\n]+/)) {
+            const t = w.trim().toLowerCase();
+            if (!t || t.length <= best.length || !low.startsWith(t)) continue;
+            if (/[a-z0-9]$/.test(t) && /^[a-z0-9]/.test(low.slice(t.length))) continue;
+            best = t;
+        }
+        if (!best) return null;
+        return low.slice(best.length).replace(/[\s,，:：、!！。.~～?？…]+/g, "") ? "lead" : "whole";
     }
     /** 现在是否在对话模式（auto 超时也算 false，等 tick 或下一句收尾）。 */
     chatActive(): "explicit" | "auto" | false {
