@@ -215,6 +215,32 @@
 
 **语音模式**：发 `/voice` 或「语音模式」，进入一段每句都只用语音回的对话，不管上面选的是哪一档；哪一条念不出来，就改发文字。每条语音下面有「📝 看文字」，点了把这条的文字显示在语音下面，再点「收起文字」收起来。说「对话模式」改回文字回复，说「退出」回到记录模式。你自己发的语音消息还是照常记进日记，它不会回。
 
+### 例子：用 BreezeBlue 配音
+
+[BreezeBlue](https://breezeblue.ai) 是一个云端配音服务，能用一句描述设计声音，也能上传一段录音克隆声音。它有免费档：每天在网站上手动领 400 额度，一个汉字算 2 份、其他字符算 1 份，10 份是 1 个额度，一条六十字的回复大约用 12 个。它的官方命令行可以直接当配音命令，不用自己写脚本：
+
+1. 装命令行并登录（macOS / Linux；Windows 的装法见[它的文档](https://docs.breezeblue.ai/cli)）：
+
+   ```bash
+   curl -fsSL https://breezeblue.ai/cli/install.sh | sh
+   breeze login
+   ```
+
+   `breeze login` 会打开浏览器让你授权，密钥存在 `~/.breeze`，插件调用它时自己读得到，不用把 key 填进插件。安装脚本还会给它找到的 Claude Code、Codex、Cursor 装上 BreezeBlue 自己的 agent skill。
+2. 准备一个声音：在 BreezeBlue 网页上设计或克隆一个，保存后拿到以 `voc_` 开头的声音 id；`breeze voice list` 也能列出你存过的声音。
+3. 在「配音命令」里填（`voc_xxx` 换成你的声音 id）：
+
+   ```
+   breeze tts --stdin --voice voc_xxx --language zh --no-stream --format opus --file {out} --agent
+   ```
+
+   - `--format opus` 直接出 Telegram 语音要的 OGG Opus，不用再转码；流式接口出不了 opus，所以要加 `--no-stream`。
+   - 想定语气，加 `--instructions "温柔、语速偏慢、不要气声"`。
+   - 插件找不到 `breeze` 的话，把第一个词换成完整路径，比如 `~/.local/bin/breeze`。
+4. 先在终端试一遍：`echo 你好，今天辛苦啦 | breeze tts --stdin --voice voc_xxx --language zh --no-stream --format opus --file test.ogg --agent`，能播出 `test.ogg` 就行。
+
+额度用完或者当天没领时念不出来：🔊 按钮会发一条消息说明原因，语音模式改发文字。用 BreezeBlue 时，要念的回复会发到它的服务器（`api.breeze.blue`）。
+
 ## 和螺旋日程一起用，效果最好
 
 这个插件自己就能用。不过它和同一个作者的 [螺旋日程](https://github.com/MatsuriMW/nautilus-spiral)（Nautilus Spiral）是一起长出来的，两个放在一起才是完整的样子。螺旋日程把今天日记里的事件和待办画成一圈螺旋，算出今天还排不排得下；机器人把这张图和这些数带到了手机上：

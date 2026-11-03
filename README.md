@@ -183,6 +183,32 @@ Before the text is handed over, HTML, links, emoji and list markers are removed,
 
 **Voice mode.** Send `/voice` (or 语音模式) to start a chat in which every reply is only a voice message, whatever the setting above says; if a reading fails, the text is sent instead. Each voice message has a 📝 Show text button that puts its text under the voice bubble (tap Hide text to fold it away). `/chat` switches back to text replies, `/record` leaves. Your own voice messages are still saved to the daily note rather than answered.
 
+### Example: voices from BreezeBlue
+
+[BreezeBlue](https://breezeblue.ai) is a cloud text-to-speech service: design a voice from a one-line description, or clone one from a recording. Its free plan gives 400 credits a day, claimed by hand on the website; a credit is 10 characters, and Chinese, Japanese and Korean characters count double. Its official CLI works as the voice command as is, with no script of your own:
+
+1. Install the CLI and log in (macOS / Linux; for Windows see [its docs](https://docs.breezeblue.ai/cli)):
+
+   ```bash
+   curl -fsSL https://breezeblue.ai/cli/install.sh | sh
+   breeze login
+   ```
+
+   `breeze login` opens the browser to authorize this computer and keeps the key in `~/.breeze`, where the CLI finds it when the plugin runs it; no key goes into the plugin. The installer also adds BreezeBlue's own agent skills to any Claude Code, Codex or Cursor it finds.
+2. Pick a voice: design or clone one on the BreezeBlue website and save it to get its id, which starts with `voc_`. `breeze voice list` lists your saved voices too.
+3. Fill in **Voice command** (replace `voc_xxx` with your voice id and `en` with the language you chat in):
+
+   ```
+   breeze tts --stdin --voice voc_xxx --language en --no-stream --format opus --file {out} --agent
+   ```
+
+   - `--format opus` writes the OGG Opus that Telegram voice messages need, so nothing has to be converted. The streaming endpoint cannot produce opus, hence `--no-stream`.
+   - To set the delivery, add `--instructions "warm, unhurried, no breathiness"`.
+   - If the plugin cannot find `breeze`, give the full path as the first word, for example `~/.local/bin/breeze`.
+4. Try it in a terminal first: `echo Hello, long day today | breeze tts --stdin --voice voc_xxx --language en --no-stream --format opus --file test.ogg --agent`, and play `test.ogg`.
+
+When the credits run out, or today's were not claimed, the reading fails: the 🔊 button sends a message saying why, and voice mode sends the text instead. With BreezeBlue, the replies to be read are sent to its servers (`api.breeze.blue`).
+
 ## Works with Nautilus Spiral
 
 The plugin works on its own. Together with [Nautilus Spiral](https://github.com/MatsuriMW/nautilus-spiral), a plugin by the same author that draws today's events and to-dos as a spiral schedule, it does more:
