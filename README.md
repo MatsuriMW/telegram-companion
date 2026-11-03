@@ -181,7 +181,7 @@ Chat replies can also arrive as Telegram voice messages. The plugin does not inc
 
 Before the text is handed over, HTML, links, emoji and list markers are removed, and lines without punctuation get a full stop so the voice pauses there. One reading runs at a time; while it runs, Telegram shows "recording voice". If the command fails, a silent message says why and the text reply stays as it is.
 
-**Voice mode.** Send `/voice` (or 语音模式) to start a chat in which every reply is only a voice message, whatever the setting above says; if a reading fails, the text is sent instead. `/chat` switches back to text replies, `/record` leaves. Your own voice messages are still saved to the daily note rather than answered.
+**Voice mode.** Send `/voice` (or 语音模式) to start a chat in which every reply is only a voice message, whatever the setting above says; if a reading fails, the text is sent instead. Each voice message has a 📝 Show text button that puts its text under the voice bubble (tap Hide text to fold it away). `/chat` switches back to text replies, `/record` leaves. Your own voice messages are still saved to the daily note rather than answered.
 
 ## Works with Nautilus Spiral
 

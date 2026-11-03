@@ -181,13 +181,13 @@ async function chatAnswer(ctx: Context, co: Companion, said: string): Promise<vo
 }
 
 // 语音回复：合成要等十几秒到几十秒，这期间显示「正在录音」；念不出来就发一条不响的说明
-// textOnFail：语音模式下没有文字回复，念不出来时把原文发出去
+// voiceOnly：语音模式，没有文字回复：语音下面挂「📝 看文字」，念不出来时把原文发出去
 async function sendVoice(
     ctx: Context,
     co: Companion,
     html: string,
     replyTo?: number,
-    textOnFail = false,
+    voiceOnly = false,
 ): Promise<void> {
     const recording = () => ctx.replyWithChatAction("record_voice").catch(() => {});
     void recording();
@@ -195,10 +195,14 @@ async function sendVoice(
     try {
         const audio = await co.speak(html);
         const chat = ctx.chat?.id;
-        if (audio && chat) await postVoice(ctx.api.token, chat, audio, replyTo);
+        if (audio && chat)
+            await postVoice(ctx.api.token, chat, audio, {
+                replyTo,
+                markup: voiceOnly ? co.textButton(co.keepText(html), false) : undefined,
+            });
     } catch (err) {
         console.error("[telegram-companion] 语音回复", err);
-        if (textOnFail) await ctx.reply(html, { parse_mode: "HTML" }).catch(() => {});
+        if (voiceOnly) await ctx.reply(html, { parse_mode: "HTML" }).catch(() => {});
         await ctx
             .reply(
                 tr("🔇 没念出来：", "🔇 Couldn't read it out: ") +
@@ -252,6 +256,37 @@ export function setupMessageHandlers(
             return;
         }
         // 🔊 念给我听：在那条回复下面回一条语音
+        // 📝 看文字 / 收起文字：文字放进这条语音的说明里；太长放不下（说明最多 1024 字）就回一条文字
+        if (mine && co && (act === "vtxt" || act === "vhide")) {
+            const html = co.voiceText(id);
+            if (!html) {
+                await ctx.answerCallbackQuery({
+                    text: tr(
+                        "这条太久了，原文找不到了",
+                        "That message is too old to show its text",
+                    ),
+                });
+                return;
+            }
+            await ctx.answerCallbackQuery();
+            const show = act === "vtxt";
+            const at = ctx.callbackQuery.message?.message_id;
+            if (show && html.length > 1000) {
+                await ctx.reply(html, {
+                    parse_mode: "HTML",
+                    ...(at ? { reply_parameters: { message_id: at } } : {}),
+                });
+                return;
+            }
+            await ctx
+                .editMessageCaption({
+                    caption: show ? html : "",
+                    parse_mode: "HTML",
+                    reply_markup: co.textButton(id, show),
+                })
+                .catch((e) => console.error("[telegram-companion] 语音文字", e));
+            return;
+        }
         if (mine && act === "tts" && co) {
             const html = co.voiceText(id);
             await ctx.answerCallbackQuery({

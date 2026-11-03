@@ -158,7 +158,7 @@ function runCommand(command: string, text: string, timeoutSec: number): Promise<
 export function voiceForm(
     chatId: number | string,
     audio: Uint8Array,
-    replyTo?: number,
+    opts: { replyTo?: number; markup?: unknown } = {},
     boundary = `----telegram-companion-${Date.now().toString(16)}`,
 ): { body: ArrayBuffer; contentType: string } {
     const enc = new TextEncoder();
@@ -167,7 +167,9 @@ export function voiceForm(
             `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`,
         );
     const parts: Uint8Array[] = [field("chat_id", String(chatId))];
-    if (replyTo) parts.push(field("reply_parameters", JSON.stringify({ message_id: replyTo })));
+    if (opts.replyTo)
+        parts.push(field("reply_parameters", JSON.stringify({ message_id: opts.replyTo })));
+    if (opts.markup) parts.push(field("reply_markup", JSON.stringify(opts.markup)));
     parts.push(
         enc.encode(
             `--${boundary}\r\nContent-Disposition: form-data; name="voice"; filename="reply.ogg"\r\nContent-Type: audio/ogg\r\n\r\n`,
@@ -190,9 +192,9 @@ export async function postVoice(
     token: string,
     chatId: number | string,
     audio: Uint8Array,
-    replyTo?: number,
+    opts: { replyTo?: number; markup?: unknown } = {},
 ): Promise<void> {
-    const { body, contentType } = voiceForm(chatId, audio, replyTo);
+    const { body, contentType } = voiceForm(chatId, audio, opts);
     const res = await requestUrl({
         url: `https://api.telegram.org/bot${token}/sendVoice`,
         method: "POST",

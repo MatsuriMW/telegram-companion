@@ -369,15 +369,36 @@ export class Companion {
     voiceMode(): VoiceMode {
         return this.cfg.voiceCommand.trim() ? this.cfg.voiceMode : "off";
     }
-    /** 回复下面的 🔊 按钮；原文先记下，点了再念。 */
-    voiceButton(html: string): InlineKeyboard {
+    /** 记下一条回复的原文（点按钮时用），返回它的编号；只留最近 100 条。 */
+    keepText(html: string): string {
         const id = (++this.voiceSeq).toString(36);
         this.voiceTexts.set(id, html);
-        if (this.voiceTexts.size > 30)
+        if (this.voiceTexts.size > 100)
             this.voiceTexts.delete(this.voiceTexts.keys().next().value as string);
+        return id;
+    }
+    /** 回复下面的 🔊 按钮；点了再念。 */
+    voiceButton(html: string): InlineKeyboard {
         return {
             inline_keyboard: [
-                [{ text: tr("🔊 念给我听", "🔊 Read it to me"), callback_data: `co|tts|${id}` }],
+                [
+                    {
+                        text: tr("🔊 念给我听", "🔊 Read it to me"),
+                        callback_data: `co|tts|${this.keepText(html)}`,
+                    },
+                ],
+            ],
+        };
+    }
+    /** 语音模式里语音下面的按钮：看文字 / 收起文字。 */
+    textButton(id: string, shown: boolean): InlineKeyboard {
+        return {
+            inline_keyboard: [
+                [
+                    shown
+                        ? { text: tr("收起文字", "Hide text"), callback_data: `co|vhide|${id}` }
+                        : { text: tr("📝 看文字", "📝 Show text"), callback_data: `co|vtxt|${id}` },
+                ],
             ],
         };
     }

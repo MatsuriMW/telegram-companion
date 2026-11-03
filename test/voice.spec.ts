@@ -42,12 +42,13 @@ describe("splitCommand", () => {
 describe("voiceForm", () => {
     const audio = new Uint8Array([0x4f, 0x67, 0x67, 0x53, 0, 255, 13, 10]);
 
-    it("builds a multipart body with chat_id, the reply target and the voice file", () => {
-        const f = voiceForm(42, audio, 7, "B");
+    it("builds a multipart body with chat_id, reply target, buttons and the voice file", () => {
+        const f = voiceForm(42, audio, { replyTo: 7, markup: { inline_keyboard: [] } }, "B");
         assert.equal(f.contentType, "multipart/form-data; boundary=B");
         const text = Buffer.from(f.body).toString("latin1");
         assert.match(text, /^--B\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n42\r\n/);
         assert.match(text, /name="reply_parameters"\r\n\r\n\{"message_id":7\}\r\n/);
+        assert.match(text, /name="reply_markup"\r\n\r\n\{"inline_keyboard":\[\]\}\r\n/);
         assert.match(
             text,
             /name="voice"; filename="reply\.ogg"\r\nContent-Type: audio\/ogg\r\n\r\n/,
@@ -56,13 +57,14 @@ describe("voiceForm", () => {
     });
 
     it("keeps the audio bytes as they are", () => {
-        const body = new Uint8Array(voiceForm(42, audio, undefined, "B").body);
-        const head = Buffer.from(body).indexOf("OggS");
-        assert.deepEqual(body.slice(head, head + audio.length), [...audio]);
+        const body = Buffer.from(voiceForm(42, audio, {}, "B").body);
+        const head = body.indexOf("OggS");
+        assert.ok(body.subarray(head, head + audio.length).equals(Buffer.from(audio)));
     });
 
-    it("leaves out reply_parameters when not replying", () => {
-        const text = Buffer.from(voiceForm(42, audio, undefined, "B").body).toString("latin1");
+    it("leaves out reply_parameters and reply_markup when not given", () => {
+        const text = Buffer.from(voiceForm(42, audio, {}, "B").body).toString("latin1");
         assert.ok(!text.includes("reply_parameters"));
+        assert.ok(!text.includes("reply_markup"));
     });
 });
