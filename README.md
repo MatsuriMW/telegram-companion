@@ -7,7 +7,7 @@
 - Start here: [What it does](#what-it-does) · [Screenshots](#screenshots) · [Installation](#installation) · [Requirements](#requirements)
 - Using it: [Setup](#usage) · [Two modes](#two-modes) · [Commands](#commands) · [Custom commands](#custom-commands) · [Tasks](#tasks) · [Persona, catchphrases and the profile note](#persona-catchphrases-and-the-profile-note)
 - How it remembers: [Memory](#memory) · [What goes into each reply](#what-goes-into-each-reply) · [What it does not remember](#what-it-does-not-remember)
-- Setup and extras: [Model backends](#model-backends) · [Works with Nautilus Spiral](#works-with-nautilus-spiral) · [Network use, accounts and local programs](#network-use-accounts-and-local-programs)
+- Setup and extras: [Model backends](#model-backends) · [Voice replies](#voice-replies) · [Works with Nautilus Spiral](#works-with-nautilus-spiral) · [Network use, accounts and local programs](#network-use-accounts-and-local-programs)
 - More: [Feedback and updates](#feedback-and-updates) · [Credits and license](#credits-and-license)
 
 A Telegram bot for your Obsidian vault that does two things. Everything you send it lands in today's daily note, and when you want to talk, it answers as a friend who has read your recent notes. It keeps a small profile note about you that grows over time, and you choose which model sits behind it: Claude Code CLI, the Anthropic API, or any OpenAI-compatible endpoint, including a local Ollama.
@@ -169,6 +169,17 @@ You can fill in all three and switch at any time, in the settings or by sending 
 
 **Where your data goes.** For each reply the plugin sends your profile note, the persona note and a digest of the last week of daily notes (task lines and top-level items, no attachments) to the model service you chose (or to the fallback backend, when one is set and it answered), and to no one else. API keys are stored in the plugin's own `data.json`. If your vault is synced to a public place, exclude that file.
 
+## Voice replies
+
+Chat replies can also arrive as Telegram voice messages. The plugin does not include a text-to-speech engine. You tell it which program on your computer turns text into audio, so the voice can be a local model, a cloud service, or your own cloned voice. This is off by default.
+
+1. In the settings under Voice replies, fill in **Voice command**. `{out}` is replaced with the audio file the command should write; Telegram voice messages need OGG Opus. The text to read arrives on standard input, or as an argument wherever you write `{text}`. For example `my-tts -o {out}`.
+2. Choose how replies are read:
+   - **🔊 Button**: each chat reply gets a 🔊 Read it to me button, and the voice is made only when you tap it. Good for slower local engines.
+   - **Every reply**: a voice message follows every chat reply.
+
+Before the text is handed over, HTML, links, emoji and list markers are removed, and lines without punctuation get a full stop so the voice pauses there. One reading runs at a time; while it runs, Telegram shows "recording voice". If the command fails, a silent message says why and the text reply stays as it is.
+
 ## Works with Nautilus Spiral
 
 The plugin works on its own. Together with [Nautilus Spiral](https://github.com/MatsuriMW/nautilus-spiral), a plugin by the same author that draws today's events and to-dos as a spiral schedule, it does more:
@@ -187,8 +198,8 @@ Without these plugins the phrases above are saved like any other message, and ev
   - The model service you chose: `api.anthropic.com` for the Anthropic API, or the base URL you entered for an OpenAI-compatible endpoint. With a local Ollama nothing leaves your computer. If a fallback backend is set, the same content goes to that service instead when the first backend fails.
   - Nothing else. There are no analytics and no telemetry.
 - **Accounts**: a Telegram account to create the bot. The companion features need an account or API key for a model service, or a local Ollama. Using it only as an inbox needs no model.
-- **Local programs**: with the Claude Code CLI backend, the plugin starts the `claude` program installed on your computer to generate replies, using that program's own login. Other backends start no programs.
-- **Files outside the vault**: none are read or written.
+- **Local programs**: with the Claude Code CLI backend, the plugin starts the `claude` program installed on your computer to generate replies, using that program's own login. Other backends start no programs. If you set a voice command, the plugin starts that program to make voice replies; whether it goes online depends on the program you chose.
+- **Files outside the vault**: none are read or written, except the temporary audio file a voice command writes in the system's temp folder, which is deleted as soon as it has been read.
 
 ## Requirements
 

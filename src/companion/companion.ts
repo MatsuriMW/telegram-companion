@@ -23,6 +23,7 @@ import {
     type SuggestionSet,
 } from "./types";
 import { tr } from "../i18n";
+import { speakable, synthesize, type VoiceMode } from "./voice";
 
 // 陪伴：对话模式 / 记录模式、读日记回话、口癖的即时回应、收工小结、
 // 陪伴档案（画像）的每周更新和对话结束后的增量整理。
@@ -162,6 +163,9 @@ export class Companion {
     private notes: Record<string, TFile> | null = null;
     private notesAt = 0;
     private runner = new FallbackRunner();
+    // 挂着 🔊 按钮的回复原文，点了才念；只留最近这些条
+    private voiceTexts = new Map<string, string>();
+    private voiceSeq = 0;
 
     constructor(private plugin: TGInbox) {
         this.app = plugin.app;
@@ -358,6 +362,32 @@ export class Companion {
             console.error("[telegram-companion] 发送失败", e);
             return false;
         }
+    }
+
+    // ================= 语音回复 =================
+    /** 现在用哪种语音回复；没填配音命令就当关着。 */
+    voiceMode(): VoiceMode {
+        return this.cfg.voiceCommand.trim() ? this.cfg.voiceMode : "off";
+    }
+    /** 回复下面的 🔊 按钮；原文先记下，点了再念。 */
+    voiceButton(html: string): InlineKeyboard {
+        const id = (++this.voiceSeq).toString(36);
+        this.voiceTexts.set(id, html);
+        if (this.voiceTexts.size > 30)
+            this.voiceTexts.delete(this.voiceTexts.keys().next().value as string);
+        return {
+            inline_keyboard: [
+                [{ text: tr("🔊 念给我听", "🔊 Read it to me"), callback_data: `co|tts|${id}` }],
+            ],
+        };
+    }
+    voiceText(id: string): string | undefined {
+        return this.voiceTexts.get(id);
+    }
+    /** 把一条回复念成语音；没有念得出来的字时返回 null。 */
+    async speak(html: string): Promise<Uint8Array | null> {
+        const text = speakable(html);
+        return text ? synthesize(this.cfg.voiceCommand, text) : null;
     }
 
     // ================= 模型 =================

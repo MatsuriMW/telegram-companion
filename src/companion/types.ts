@@ -1,4 +1,5 @@
 import { tr } from "../i18n";
+import type { VoiceMode } from "./voice";
 
 /** An instant reply to one of the user's own catchphrases (no model call). */
 export interface Quip {
@@ -83,6 +84,10 @@ export interface CompanionSettings {
     openaiModel: string;
     /** 主后端报错时自动换过去重试的后端；空着就是不用 */
     fallback: Backend | "";
+    /** 陪聊回复要不要念成语音：off 不念 · button 回复下面放一个 🔊 按钮 · always 每条都念 */
+    voiceMode: VoiceMode;
+    /** 配音命令：{out} 是要写出的音频文件（OGG Opus），要念的字从标准输入给，或者写 {text} 当参数给 */
+    voiceCommand: string;
     // runtime state
     chat: ChatState | null;
     chatMemory: ChatMemoryItem[];
@@ -143,6 +148,8 @@ export const COMPANION_DEFAULTS: CompanionSettings = {
     openaiKey: "",
     openaiModel: "",
     fallback: "",
+    voiceMode: "off",
+    voiceCommand: "",
     chat: null,
     chatMemory: [],
     said: [],

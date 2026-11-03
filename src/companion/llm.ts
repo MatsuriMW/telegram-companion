@@ -1,6 +1,14 @@
 import { Platform, requestUrl } from "obsidian";
 import { BACKEND_NAMES, CLI_MODELS, type Backend, type CompanionSettings } from "./types";
 import { tr } from "../i18n";
+import {
+    cliEnv,
+    expandHome,
+    nodeRequire,
+    type NodeChild,
+    type NodeChildProcess,
+    type NodeOs,
+} from "./node";
 
 // 模型后端：Claude Code 命令行 / Anthropic API / OpenAI 兼容接口（DeepSeek、OpenRouter、Ollama……）
 // 每次调用只发一段提示词、拿回一段文字，不带工具、不存会话。
@@ -126,27 +134,6 @@ interface CliReply {
     result?: string;
 }
 
-// The few pieces of Node's child_process used by the command-line backend,
-// declared here so the file type-checks without @types/node.
-interface NodeStream {
-    on(event: "data", cb: (chunk: { toString(): string }) => void): void;
-}
-interface NodeChild {
-    stdout: NodeStream | null;
-    stderr: NodeStream | null;
-    stdin: { write(text: string): void; end(): void } | null;
-    on(event: "error", cb: (e: Error) => void): void;
-    on(event: "close", cb: (code: number | null) => void): void;
-    kill(): void;
-}
-interface NodeChildProcess {
-    spawn: (
-        bin: string,
-        args: string[],
-        opts: { cwd: string; env: Record<string, string | undefined> },
-    ) => NodeChild;
-}
-
 async function callHttp<T extends ApiError>(
     url: string,
     headers: Record<string, string>,
@@ -198,26 +185,11 @@ function callCli(c: CompanionSettings, prompt: string, timeoutSec: number): Prom
             new Error(tr("命令行后端只能在桌面端用", "The CLI backend only works on desktop")),
         );
     }
-    // Node 模块只在桌面端有，用到时再取。这里必须拿真正的进程环境：
-    // 打包进来的 grammy 网页版自带一个 process 替身，里面没有 HOME，命令行就找不到自己的登录。
-    const req = (window as unknown as { require: (id: string) => unknown }).require;
-    const { spawn } = req("child_process") as NodeChildProcess;
-    const os = req("os") as { homedir(): string; tmpdir(): string };
-    const path = req("path") as { join(...parts: string[]): string; delimiter: string };
-    const penv = (req("process") as { env: Record<string, string | undefined> }).env;
+    const { spawn } = nodeRequire<NodeChildProcess>("child_process");
+    const os = nodeRequire<NodeOs>("os");
     return new Promise((resolve, reject) => {
-        const bin = (c.cliPath || "claude").replace(/^~(?=\/)/, os.homedir());
-        const env = {
-            ...penv,
-            PATH: [
-                path.join(os.homedir(), ".local/bin"),
-                "/opt/homebrew/bin",
-                "/usr/local/bin",
-                "/usr/bin",
-                "/bin",
-                penv.PATH || "",
-            ].join(path.delimiter),
-        };
+        const bin = expandHome(c.cliPath || "claude");
+        const env = cliEnv();
         const args = [
             "-p",
             "--output-format",

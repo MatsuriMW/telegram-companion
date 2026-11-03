@@ -1,5 +1,6 @@
 import { moment } from "obsidian";
-import { type Bot, type Context } from "grammy";
+import { InputFile, type Bot, type Context } from "grammy";
+import type { InlineKeyboardMarkup } from "grammy/types";
 import type { TGInboxSettings } from "../settings/types";
 import { generateContentFromTemplate } from "../utils/template";
 import { downloadAndSaveFile } from "../utils/download";
@@ -94,11 +95,13 @@ const THINKING: Record<string, string[]> = {
     ],
 };
 
+// 返回发出去的回复（没发出去就是 null）；markupFor 给回复配按钮
 async function withThinking(
     ctx: Context,
     stages: string[],
     work: () => Promise<string | null>,
-): Promise<void> {
+    markupFor?: (html: string) => InlineKeyboardMarkup,
+): Promise<string | null> {
     let ph: { chat: { id: number }; message_id: number } | null = null;
     let i = 0;
     try {
@@ -118,7 +121,12 @@ async function withThinking(
         const html = await work();
         window.clearInterval(timer);
         if (ph) await ctx.api.deleteMessage(ph.chat.id, ph.message_id).catch(() => {});
-        if (html) await ctx.reply(html, { parse_mode: "HTML" });
+        if (html)
+            await ctx.reply(html, {
+                parse_mode: "HTML",
+                ...(markupFor ? { reply_markup: markupFor(html) } : {}),
+            });
+        return html;
     } catch (err) {
         window.clearInterval(timer);
         console.error("[telegram-companion] 生成回复", err);
@@ -128,6 +136,7 @@ async function withThinking(
             tr("\n再发一次试试？", "\\nTry sending it again?");
         if (ph) await ctx.api.editMessageText(ph.chat.id, ph.message_id, msg).catch(() => {});
         else await ctx.reply(msg).catch(() => {});
+        return null;
     }
 }
 
@@ -140,7 +149,45 @@ async function replyDaySummary(ctx: Context, co: Companion, msg: MessageUpdate):
 
 async function chatAnswer(ctx: Context, co: Companion, said: string): Promise<void> {
     const mood = co.moodOf(said) || co.cfg.chat?.mood || "chat";
-    await withThinking(ctx, THINKING[mood] || THINKING.chat, () => co.chatReply(said));
+    const voice = co.voiceMode();
+    const html = await withThinking(
+        ctx,
+        THINKING[mood] || THINKING.chat,
+        () => co.chatReply(said),
+        voice === "button" ? (h) => co.voiceButton(h) : undefined,
+    );
+    if (html && voice === "always") await sendVoice(ctx, co, html);
+}
+
+// 语音回复：合成要等十几秒到几十秒，这期间显示「正在录音」；念不出来就发一条不响的说明
+async function sendVoice(
+    ctx: Context,
+    co: Companion,
+    html: string,
+    replyTo?: number,
+): Promise<void> {
+    const recording = () => ctx.replyWithChatAction("record_voice").catch(() => {});
+    void recording();
+    const timer = window.setInterval(() => void recording(), 4000);
+    try {
+        const audio = await co.speak(html);
+        if (audio)
+            await ctx.replyWithVoice(
+                new InputFile(audio, "reply.ogg"),
+                replyTo ? { reply_parameters: { message_id: replyTo } } : {},
+            );
+    } catch (err) {
+        console.error("[telegram-companion] 语音回复", err);
+        await ctx
+            .reply(
+                tr("🔇 没念出来：", "🔇 Couldn't read it out: ") +
+                    String((err as Error)?.message || err).slice(0, 160),
+                { disable_notification: true },
+            )
+            .catch(() => {});
+    } finally {
+        window.clearInterval(timer);
+    }
 }
 
 // 作息口令：比较前去掉句尾的标点和语气（「去吃饭了！」「睡了～」）
@@ -181,6 +228,17 @@ export function setupMessageHandlers(
                           "This device doesn't have the reminders plugin; tap again on your computer",
                       ),
             });
+            return;
+        }
+        // 🔊 念给我听：在那条回复下面回一条语音
+        if (mine && act === "tts" && co) {
+            const html = co.voiceText(id);
+            await ctx.answerCallbackQuery({
+                text: html
+                    ? tr("🎙 在录，稍等……", "🎙 Recording, one moment…")
+                    : tr("这条太久了，原文找不到了", "That reply is too old to read out"),
+            });
+            if (html) await sendVoice(ctx, co, html, ctx.callbackQuery.message?.message_id);
             return;
         }
         try {

@@ -9,6 +9,7 @@ import {
     type Quip,
 } from "./types";
 import { tr } from "../i18n";
+import type { VoiceMode } from "./voice";
 
 type BoolKey = {
     [K in keyof CompanionSettings]: CompanionSettings[K] extends boolean ? K : never;
@@ -349,6 +350,35 @@ export function renderCompanionSettings(
             });
             t.inputEl.rows = 3;
         });
+
+    // ---- 语音回复
+    new Setting(containerEl).setName(tr("语音回复", "Voice replies")).setHeading();
+    new Setting(containerEl)
+        .setName(tr("陪聊回复念成语音", "Read chat replies aloud"))
+        .setDesc(
+            tr(
+                "按钮：每条回复下面放一个 🔊，点了才念；每条都念：回复发出后再发一条语音。要先在下面填配音命令",
+                "Button: a 🔊 under each reply, read out only when tapped. Every reply: a voice message follows each reply. Needs the voice command below",
+            ),
+        )
+        .addDropdown((d) => {
+            d.addOption("off", tr("不念", "Off"));
+            d.addOption("button", tr("🔊 按钮", "🔊 Button"));
+            d.addOption("always", tr("每条都念", "Every reply"));
+            d.setValue(cc.voiceMode).onChange(async (v) => {
+                cc.voiceMode = v as VoiceMode;
+                await save();
+            });
+        });
+    text(
+        tr("　配音命令", "　Voice command"),
+        tr(
+            "在这台电脑上把文字念成音频的命令，只在桌面端运行；念出来的语音和文字回复一样发到 Telegram，命令本身联不联网看你用的工具。{out} 换成要写出的音频文件（Telegram 语音消息要 OGG Opus），要念的字从标准输入给；命令里写 {text} 就改成当参数给。例：my-tts -o {out}",
+            "A command on this computer that turns text into audio; desktop only. The audio goes to Telegram like any reply; whether the command itself goes online depends on the tool you use. {out} becomes the audio file to write (Telegram voice messages need OGG Opus); the text arrives on standard input, or as an argument wherever you write {text}. Example: my-tts -o {out}",
+        ),
+        "voiceCommand",
+        "my-tts -o {out}",
+    );
 
     // ---- 背后的模型
     new Setting(containerEl).setName(tr("背后的模型", "Model")).setHeading();
