@@ -1092,11 +1092,12 @@ ${this.chatLines(pend)}
     // 记录模式（默认）：发来的都记进日记。对话模式：每句都由模型接着聊，对话内容不进日记。
     //   explicit：说「对话模式」「陪我聊天」进入，一直保持到说「退出」「记录模式」「睡了」
     //   auto：情绪话、口癖、「聊聊 / 陪我」、回复它的消息时自动进入，chatIdleMin 分钟没说话就自己回到记录模式
-    chatCommand(said: string): "enter" | "exit" | null {
+    chatCommand(said: string): "enter" | "voice" | "exit" | null {
         const s = String(said || "")
             .trim()
             .replace(/[!！。.~～\s]+$/, "");
         if (s === "/chat") return "enter";
+        if (/^(?:\/voice|语音模式|语音对话|语音聊天|用语音回我|说给我听)$/i.test(s)) return "voice";
         if (
             /^(?:退出(?:对话|聊天)?(?:模式)?|记录模式|回到记录模式|不聊了|先不聊了|结束对话|\/record|\/exit)$/.test(
                 s,

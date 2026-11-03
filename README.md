@@ -77,6 +77,7 @@ Edit the phrases under **Phrases that start chat mode** in the settings. Symbols
 |---|---|---|
 | Any text, photo, link or voice message | Saves it to today's daily note, timed by when the message was sent. With list mode on, each line becomes a list item; lines that already are list items (`•`, `1、`, `①` and the like) keep their own marker and indentation, and a `#` heading becomes an item with everything under it indented one level (`##` one level deeper). Optionally the first line gets the time it arrived, forwarded messages get a tag, and pictures are embedded at a percentage of their own width | Yes |
 | `/chat`, `/record` | Enters or leaves chat mode | No |
+| `/voice` | Voice mode: chat mode where every reply comes as a voice message. Needs a voice command (see [Voice replies](#voice-replies)); `/chat` switches back to text | No |
 | `/summary` | Summarises today without ending the day | No |
 | `/mode` | Says which mode it is in | No |
 | `/model` | Shows the current model, with buttons to switch | No |
@@ -179,6 +180,8 @@ Chat replies can also arrive as Telegram voice messages. The plugin does not inc
    - **Every reply**: a voice message follows every chat reply.
 
 Before the text is handed over, HTML, links, emoji and list markers are removed, and lines without punctuation get a full stop so the voice pauses there. One reading runs at a time; while it runs, Telegram shows "recording voice". If the command fails, a silent message says why and the text reply stays as it is.
+
+**Voice mode.** Send `/voice` (or 语音模式) to start a chat in which every reply is only a voice message, whatever the setting above says; if a reading fails, the text is sent instead. `/chat` switches back to text replies, `/record` leaves. Your own voice messages are still saved to the daily note rather than answered.
 
 ## Works with Nautilus Spiral
 

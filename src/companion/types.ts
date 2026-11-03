@@ -30,6 +30,8 @@ export interface ChatState {
     last: number;
     history: ChatTurn[];
     n: number;
+    /** 语音模式：这段对话里每条回复都只发语音 */
+    voice?: boolean;
 }
 
 export interface ChatMemoryItem {

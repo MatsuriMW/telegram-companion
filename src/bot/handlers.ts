@@ -101,6 +101,7 @@ async function withThinking(
     stages: string[],
     work: () => Promise<string | null>,
     markupFor?: (html: string) => InlineKeyboardMarkup,
+    deliver?: (html: string) => Promise<void>,
 ): Promise<string | null> {
     let ph: { chat: { id: number }; message_id: number } | null = null;
     let i = 0;
@@ -120,8 +121,16 @@ async function withThinking(
     try {
         const html = await work();
         window.clearInterval(timer);
+        // 换一种发法（语音模式）：提示先改成「在录」，发完再删
+        if (html && deliver) {
+            if (ph)
+                await ctx.api
+                    .editMessageText(ph.chat.id, ph.message_id, tr("🎙 在录……", "🎙 Recording…"))
+                    .catch(() => {});
+            await deliver(html);
+        }
         if (ph) await ctx.api.deleteMessage(ph.chat.id, ph.message_id).catch(() => {});
-        if (html)
+        if (html && !deliver)
             await ctx.reply(html, {
                 parse_mode: "HTML",
                 ...(markupFor ? { reply_markup: markupFor(html) } : {}),
@@ -149,6 +158,17 @@ async function replyDaySummary(ctx: Context, co: Companion, msg: MessageUpdate):
 
 async function chatAnswer(ctx: Context, co: Companion, said: string): Promise<void> {
     const mood = co.moodOf(said) || co.cfg.chat?.mood || "chat";
+    // 语音模式：只发语音，念不出来才发文字
+    if (co.cfg.chat?.voice) {
+        await withThinking(
+            ctx,
+            THINKING[mood] || THINKING.chat,
+            () => co.chatReply(said),
+            undefined,
+            (h) => sendVoice(ctx, co, h, undefined, true),
+        );
+        return;
+    }
     const voice = co.voiceMode();
     const html = await withThinking(
         ctx,
@@ -160,11 +180,13 @@ async function chatAnswer(ctx: Context, co: Companion, said: string): Promise<vo
 }
 
 // 语音回复：合成要等十几秒到几十秒，这期间显示「正在录音」；念不出来就发一条不响的说明
+// textOnFail：语音模式下没有文字回复，念不出来时把原文发出去
 async function sendVoice(
     ctx: Context,
     co: Companion,
     html: string,
     replyTo?: number,
+    textOnFail = false,
 ): Promise<void> {
     const recording = () => ctx.replyWithChatAction("record_voice").catch(() => {});
     void recording();
@@ -178,6 +200,7 @@ async function sendVoice(
             );
     } catch (err) {
         console.error("[telegram-companion] 语音回复", err);
+        if (textOnFail) await ctx.reply(html, { parse_mode: "HTML" }).catch(() => {});
         await ctx
             .reply(
                 tr("🔇 没念出来：", "🔇 Couldn't read it out: ") +
@@ -329,16 +352,49 @@ export function setupMessageHandlers(
             }
             if (co) {
                 const chatCmd = co.chatCommand(said);
-                if (chatCmd === "enter" || chatWord === "whole") {
-                    const was = co.chatActive();
-                    await co.chatStart("explicit");
+                if (chatCmd === "voice") {
+                    if (!co.cfg.voiceCommand.trim()) {
+                        await ctx.reply(
+                            tr(
+                                "🎙 还没设配音命令：在 Obsidian 的插件设置「语音回复」里填好，再来开语音模式",
+                                "🎙 No voice command yet: set one under Voice replies in the plugin settings, then try again",
+                            ),
+                        );
+                        return;
+                    }
+                    const was = co.cfg.chat?.voice && co.chatActive();
+                    const c = await co.chatStart("explicit");
+                    c.voice = true;
+                    co.saveSoon();
                     await ctx.reply(
-                        was === "explicit"
-                            ? tr("💬 已经在对话模式啦，接着说～", "💬 Already in chat mode, go on~")
+                        was
+                            ? tr("🎙 已经在语音模式啦，接着说～", "🎙 Already in voice mode, go on~")
                             : tr(
-                                  "💬 <b>进入对话模式</b>\n接下来你说的每句我都会回，这些对话不进日记。\n📝 想顺手记一句，用「记 」开头\n🚪 说「退出」回到记录模式",
-                                  "💬 <b>Chat mode on</b>\\nI'll answer everything you say from now on, and none of it goes into your notes.\\n🚪 Send /record to go back to record mode",
+                                  "🎙 <b>进入语音模式</b>\n接下来你说的每句我都用语音回，对话不进日记。每条要等十几二十秒。\n💬 说「对话模式」改回文字\n🚪 说「退出」回到记录模式",
+                                  "🎙 <b>Voice mode on</b>\nI'll answer everything you say with a voice message, and none of it goes into your notes. Each one takes a little while.\n💬 Send /chat to switch back to text\n🚪 Send /record to go back to record mode",
                               ),
+                        { parse_mode: "HTML" },
+                    );
+                    return;
+                }
+                if (chatCmd === "enter" || chatWord === "whole") {
+                    const wasVoice = !!(co.cfg.chat?.voice && co.chatActive());
+                    const was = co.chatActive();
+                    const c = await co.chatStart("explicit");
+                    c.voice = false;
+                    co.saveSoon();
+                    await ctx.reply(
+                        wasVoice
+                            ? tr("💬 改回文字啦，接着说～", "💬 Back to text, go on~")
+                            : was === "explicit"
+                              ? tr(
+                                    "💬 已经在对话模式啦，接着说～",
+                                    "💬 Already in chat mode, go on~",
+                                )
+                              : tr(
+                                    "💬 <b>进入对话模式</b>\n接下来你说的每句我都会回，这些对话不进日记。\n📝 想顺手记一句，用「记 」开头\n🚪 说「退出」回到记录模式",
+                                    "💬 <b>Chat mode on</b>\\nI'll answer everything you say from now on, and none of it goes into your notes.\\n🚪 Send /record to go back to record mode",
+                                ),
                         { parse_mode: "HTML" },
                     );
                     return;
@@ -371,20 +427,25 @@ export function setupMessageHandlers(
                               )
                             : 0;
                     await ctx.reply(
-                        a === "explicit"
+                        a && chat?.voice
                             ? tr(
-                                  "💬 现在是<b>对话模式</b>（你自己开的），说「退出」回到记录模式",
-                                  "💬 <b>Chat mode</b> (you started it). Send /record to go back to record mode",
+                                  "🎙 现在是<b>语音模式</b>，每句都用语音回；说「对话模式」改回文字，说「退出」回到记录模式",
+                                  "🎙 <b>Voice mode</b>: every reply is a voice message. Send /chat for text again, /record to go back to record mode",
                               )
-                            : a === "auto"
+                            : a === "explicit"
                               ? tr(
-                                    `💬 现在是<b>对话模式</b>（自动进入的），再过 ${left} 分钟不说话就回到记录模式；说「退出」马上回去`,
-                                    `💬 <b>Chat mode</b> (started automatically). After ${left} more minutes of silence it goes back to record mode; send /record to go back now`,
+                                    "💬 现在是<b>对话模式</b>（你自己开的），说「退出」回到记录模式",
+                                    "💬 <b>Chat mode</b> (you started it). Send /record to go back to record mode",
                                 )
-                              : tr(
-                                    "📝 现在是<b>记录模式</b>，发什么我都记进日记；说「对话模式」开始聊",
-                                    "📝 <b>Record mode</b>: everything you send goes into your daily note. Send /chat to start chatting",
-                                ),
+                              : a === "auto"
+                                ? tr(
+                                      `💬 现在是<b>对话模式</b>（自动进入的），再过 ${left} 分钟不说话就回到记录模式；说「退出」马上回去`,
+                                      `💬 <b>Chat mode</b> (started automatically). After ${left} more minutes of silence it goes back to record mode; send /record to go back now`,
+                                  )
+                                : tr(
+                                      "📝 现在是<b>记录模式</b>，发什么我都记进日记；说「对话模式」开始聊",
+                                      "📝 <b>Record mode</b>: everything you send goes into your daily note. Send /chat to start chatting",
+                                  ),
                         { parse_mode: "HTML" },
                     );
                     return;

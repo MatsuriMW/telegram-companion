@@ -39,6 +39,13 @@ export function telegramCommands(plugin: TGInbox): { command: string; descriptio
                 ),
             },
             { command: "chat", description: tr("💬 进入对话模式", "💬 Start chat mode") },
+            {
+                command: "voice",
+                description: tr(
+                    "🎙 语音模式（每句都用语音回）",
+                    "🎙 Voice mode (replies as voice messages)",
+                ),
+            },
             { command: "record", description: tr("📝 回到记录模式", "📝 Back to record mode") },
             { command: "mode", description: tr("🔀 现在是哪种模式", "🔀 Which mode is on") },
         );
@@ -126,6 +133,7 @@ function helpEn(plugin: TGInbox): string {
         "📝 Record mode (default): everything you send is saved",
         "💬 Chat mode: I answer every message, and the chat is not saved",
         "· /chat starts it, /record goes back",
+        "· /voice: chat mode where every reply is a voice message (needs a voice command in the settings)",
         `· Starting a message with ${chatWords(plugin)}, or replying to me, also starts it; after a while of silence I go back to recording`,
         "",
         "⌨️ <b>Commands</b>",
@@ -165,6 +173,7 @@ function helpZh(plugin: TGInbox): string {
         `· ${chatWords(plugin)} /chat 进入，<code>退出</code> /record 回来`,
         "· 用这些说法开头、后面接着说话，或者回复我的消息，也会进入；一阵子不说话自动回来",
         "· 对话里想记一句：<code>记 明天买牛奶</code>",
+        "· <code>语音模式</code> /voice：对话模式，但每句都用语音回（要先在设置里填配音命令）",
         "",
         "⌨️ <b>指令</b>",
     ];
