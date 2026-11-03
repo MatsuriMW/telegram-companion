@@ -1,5 +1,5 @@
 import { moment } from "obsidian";
-import { InputFile, type Bot, type Context } from "grammy";
+import { type Bot, type Context } from "grammy";
 import type { InlineKeyboardMarkup } from "grammy/types";
 import type { TGInboxSettings } from "../settings/types";
 import { generateContentFromTemplate } from "../utils/template";
@@ -14,6 +14,7 @@ import { notifyPlugin, spiralPlugin } from "../integrations";
 import { helpHtml } from "./commands";
 import { askText, builtin, matchCustom, noteLine } from "./custom-commands";
 import { tr } from "../i18n";
+import { postVoice } from "../companion/voice";
 
 async function executePostAction(ctx: Context, settings: TGInboxSettings): Promise<void> {
     if (settings.action_after_reception === "delete") {
@@ -193,11 +194,8 @@ async function sendVoice(
     const timer = window.setInterval(() => void recording(), 4000);
     try {
         const audio = await co.speak(html);
-        if (audio)
-            await ctx.replyWithVoice(
-                new InputFile(audio, "reply.ogg"),
-                replyTo ? { reply_parameters: { message_id: replyTo } } : {},
-            );
+        const chat = ctx.chat?.id;
+        if (audio && chat) await postVoice(ctx.api.token, chat, audio, replyTo);
     } catch (err) {
         console.error("[telegram-companion] 语音回复", err);
         if (textOnFail) await ctx.reply(html, { parse_mode: "HTML" }).catch(() => {});

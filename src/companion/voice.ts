@@ -1,4 +1,4 @@
-import { Platform } from "obsidian";
+import { Platform, requestUrl } from "obsidian";
 import { tr } from "../i18n";
 import {
     cliEnv,
@@ -149,4 +149,63 @@ function runCommand(command: string, text: string, timeoutSec: number): Promise<
         if (!asArg) child.stdin?.write(text);
         child.stdin?.end();
     });
+}
+
+/**
+ * sendVoice 的 multipart 请求体。不用 grammy 传文件：它的网页版把文件做成流式请求体，
+ * Obsidian 里的 fetch 不收这种 body（「Network request for 'sendVoice' failed」）。
+ */
+export function voiceForm(
+    chatId: number | string,
+    audio: Uint8Array,
+    replyTo?: number,
+    boundary = `----telegram-companion-${Date.now().toString(16)}`,
+): { body: ArrayBuffer; contentType: string } {
+    const enc = new TextEncoder();
+    const field = (name: string, value: string) =>
+        enc.encode(
+            `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`,
+        );
+    const parts: Uint8Array[] = [field("chat_id", String(chatId))];
+    if (replyTo) parts.push(field("reply_parameters", JSON.stringify({ message_id: replyTo })));
+    parts.push(
+        enc.encode(
+            `--${boundary}\r\nContent-Disposition: form-data; name="voice"; filename="reply.ogg"\r\nContent-Type: audio/ogg\r\n\r\n`,
+        ),
+        audio,
+        enc.encode(`\r\n--${boundary}--\r\n`),
+    );
+    const body = new ArrayBuffer(parts.reduce((n, p) => n + p.length, 0));
+    const view = new Uint8Array(body);
+    let at = 0;
+    for (const p of parts) {
+        view.set(p, at);
+        at += p.length;
+    }
+    return { body, contentType: `multipart/form-data; boundary=${boundary}` };
+}
+
+/** 把一段 OGG Opus 作为语音消息发给 chatId（走 Obsidian 的 requestUrl）。 */
+export async function postVoice(
+    token: string,
+    chatId: number | string,
+    audio: Uint8Array,
+    replyTo?: number,
+): Promise<void> {
+    const { body, contentType } = voiceForm(chatId, audio, replyTo);
+    const res = await requestUrl({
+        url: `https://api.telegram.org/bot${token}/sendVoice`,
+        method: "POST",
+        contentType,
+        body,
+        throw: false,
+    });
+    let d: { ok?: boolean; description?: string } | null = null;
+    try {
+        d = res.json as { ok?: boolean; description?: string };
+    } catch {
+        /* 不是 JSON */
+    }
+    if (res.status >= 400 || !d?.ok)
+        throw new Error(d?.description || `sendVoice HTTP ${res.status}`);
 }

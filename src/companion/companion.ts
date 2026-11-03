@@ -588,6 +588,14 @@ ${days.join("\n\n") || "（这一周的日记是空的）"}`;
                   ? "他在 Telegram 里找你聊天。"
                   : "他刚在 Telegram 里给你发了消息，情绪不太好。";
         const now = moment().format("M月D日 dddd HH:mm");
+        // 语音模式：回复会念成语音，长短和说法都跟打字聊天不一样
+        const voiceRule = c.chat?.voice
+            ? `\n\n这次的回复会被念成语音发给他（语音模式），这一条比上面的行数、emoji、格式要求都优先：写成说出口的话，像打电话一样自然，不要 emoji、不要列表、不要 HTML 标签和链接，数字和英文能换成中文说法就换；${
+                  text.length > 150
+                      ? "他这次说了很多，可以多回一点，但也控制在 300 字以内（念出来一分钟左右）。"
+                      : "控制在 150 字以内（念出来不超过 30 秒），一两个意思说清楚就停，不要面面俱到。"
+              }`
+            : "";
         const head = persona
             ? `你要扮演下面「人设」里写的角色，和他在 Telegram 里聊天（他是谁写在后面的陪伴档案里）。${opener}现在是 ${now}。${quipNote}
 
@@ -612,7 +620,7 @@ ${week.length ? `\n更早几天（近一周，用来看他一直在做什么、�
 ${talk ? `你们刚才的对话：\n${talk}\n` : ""}${said ? `\n你最近已经说过的话（不在上面这段对话里的）：\n${said}\n` : ""}
 他现在说：「${text}」
 
-${persona ? personaRules : rules}`;
+${persona ? personaRules : rules}${voiceRule}`;
         let reply: string;
         let note = ""; // 备用后端回的时候加在末尾；不算进它「说过的话」
         let failed = false;
